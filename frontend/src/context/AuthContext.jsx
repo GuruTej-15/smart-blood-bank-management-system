@@ -36,6 +36,19 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const authenticateWithGoogle = useCallback(async (payload) => {
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/google", payload);
+      localStorage.setItem("sbb_token", data.token);
+      localStorage.setItem("sbb_user", JSON.stringify(data.user));
+      setUser(data.user);
+      return data.user;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const logout = useCallback(() => {
     localStorage.removeItem("sbb_token");
     localStorage.removeItem("sbb_user");
@@ -43,7 +56,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, register, authenticateWithGoogle, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,20 +2,46 @@ const Donor = require("../models/Donor");
 const Donation = require("../models/Donation");
 const Request = require("../models/Request");
 const Hospital = require("../models/Hospital");
-const { store, getAllStockSnapshot } = require("../utils/store");
+const Inventory = require("../models/Inventory");
 const { BLOOD_GROUPS } = require("../utils/constants");
 
 // ---------- Dashboard ----------
 
 async function dashboardSummary(req, res) {
-  const [totalDonors, totalHospitals, pendingRequests, fulfilledRequests] = await Promise.all([
+  const [
+    totalDonors,
+    totalHospitals,
+    pendingNormalRequests,
+    pendingEmergencyRequests,
+    fulfilledRequests,
+    expiringSoonCount,
+    topDonor,
+    stockRows,
+  ] = await Promise.all([
     Donor.countDocuments(),
     Hospital.countDocuments(),
-    Request.countDocuments({ status: "pending" }),
+    Request.countDocuments({ status: "pending", isEmergency: false }),
+    Request.countDocuments({ status: "pending", isEmergency: true }),
     Request.countDocuments({ status: "fulfilled" }),
+    Inventory.countDocuments({
+      status: "available",
+      expiryDate: { $lte: new Date(Date.now() + (Number(process.env.EXPIRY_ALERT_DAYS) || 7) * 24 * 60 * 60 * 1000) },
+    }),
+    Donor.findOne().sort({ totalDonations: -1 }).lean(),
+    Inventory.aggregate([
+      { $match: { status: "available" } },
+      { $group: { _id: "$bloodGroup", totalUnits: { $sum: "$units" } } },
+    ]),
   ]);
 
-  const snapshot = getAllStockSnapshot();
+  const snapshot = BLOOD_GROUPS.reduce((acc, group) => {
+    acc[group] = 0;
+    return acc;
+  }, {});
+  stockRows.forEach((row) => {
+    snapshot[row._id] = row.totalUnits;
+  });
+
   const totalUnitsAvailable = Object.values(snapshot).reduce((a, b) => a + b, 0);
 
   res.json({
@@ -23,11 +49,11 @@ async function dashboardSummary(req, res) {
     totalHospitals,
     totalUnitsAvailable,
     stockByGroup: snapshot,
-    pendingNormalRequests: store.normalQueue.size,
-    pendingEmergencyRequests: store.emergencyQueue.size,
+    pendingNormalRequests,
+    pendingEmergencyRequests,
     fulfilledRequests,
-    expiringSoonCount: store.expiryHeap.expiringWithin(Number(process.env.EXPIRY_ALERT_DAYS) || 7).length,
-    topDonor: store.donorRankHeap.peekTop() || null,
+    expiringSoonCount,
+    topDonor: topDonor || null,
   });
 }
 
@@ -88,7 +114,18 @@ async function monthlyRequests(req, res) {
 // ---------- Stock trend (current snapshot, all groups) ----------
 
 async function stockTrend(req, res) {
-  res.json({ snapshot: getAllStockSnapshot() });
+  const rows = await Inventory.aggregate([
+    { $match: { status: "available" } },
+    { $group: { _id: "$bloodGroup", totalUnits: { $sum: "$units" } } },
+  ]);
+  const snapshot = BLOOD_GROUPS.reduce((acc, group) => {
+    acc[group] = 0;
+    return acc;
+  }, {});
+  rows.forEach((row) => {
+    snapshot[row._id] = row.totalUnits;
+  });
+  res.json({ snapshot });
 }
 
 // ---------- AI-Based Demand Insights (Simulation) ----------
@@ -99,13 +136,27 @@ async function demandInsights(req, res) {
   const weeksOfHistory = 6;
   const since = new Date(Date.now() - weeksOfHistory * 7 * 24 * 60 * 60 * 1000);
 
-  const requests = await Request.find({ createdAt: { $gte: since } }).select("bloodGroup unitsRequired createdAt");
+  const [requests, stockRows] = await Promise.all([
+    Request.find({ createdAt: { $gte: since } }).select("bloodGroup unitsRequired createdAt").lean(),
+    Inventory.aggregate([
+      { $match: { status: "available" } },
+      { $group: { _id: "$bloodGroup", totalUnits: { $sum: "$units" } } },
+    ]),
+  ]);
+
+  const stockByGroup = BLOOD_GROUPS.reduce((acc, group) => {
+    acc[group] = 0;
+    return acc;
+  }, {});
+  stockRows.forEach((row) => {
+    stockByGroup[row._id] = row.totalUnits;
+  });
 
   const insights = BLOOD_GROUPS.map((group) => {
     const groupRequests = requests.filter((r) => r.bloodGroup === group);
     const totalUnits = groupRequests.reduce((sum, r) => sum + r.unitsRequired, 0);
     const avgWeeklyDemand = Number((totalUnits / weeksOfHistory).toFixed(2));
-    const currentStock = (store.inventoryByGroup.get(group) || []).length;
+    const currentStock = stockByGroup[group] || 0;
     const projectedNextWeekDemand = avgWeeklyDemand; // simple moving-average projection
     const weeksOfStockRemaining =
       avgWeeklyDemand > 0 ? Number((currentStock / avgWeeklyDemand).toFixed(1)) : null;

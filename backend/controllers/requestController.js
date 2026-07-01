@@ -19,6 +19,9 @@ async function listRequests(req, res) {
   const { status } = req.query;
   const filter = {};
   if (status) filter.status = status;
+  if (req.user.role === "hospital" && req.user.hospital) {
+    filter.hospital = req.user.hospital;
+  }
   const requests = await Request.find(filter).populate("hospital", "hospitalName").sort({ createdAt: -1 });
   res.json({ count: requests.length, requests });
 }

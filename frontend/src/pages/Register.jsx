@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Droplets } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Field, TextInput, Select, PrimaryButton } from "../components/Form";
+import GoogleAuthButton from "../components/GoogleAuthButton";
 import { BLOOD_GROUPS, getLandingPath } from "../utils/constants";
 
 export default function Register() {
-  const { register, loading } = useAuth();
+  const { register, authenticateWithGoogle, loading } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: "",
@@ -29,6 +30,25 @@ export default function Register() {
       navigate(getLandingPath(user.role));
     } catch (err) {
       setError(err.response?.data?.message || "Registration failed");
+    }
+  }
+
+  async function handleGoogleCredential(idToken) {
+    setError("");
+    try {
+      const user = await authenticateWithGoogle({
+        idToken,
+        name: form.name,
+        role: form.role,
+        phone: form.phone,
+        bloodGroup: form.bloodGroup,
+        hospitalName: form.hospitalName,
+        contactNumber: form.contactNumber,
+        adminCode: form.adminCode,
+      });
+      navigate(getLandingPath(user.role));
+    } catch (err) {
+      setError(err.response?.data?.message || "Google registration failed");
     }
   }
 
@@ -125,6 +145,9 @@ export default function Register() {
           <PrimaryButton type="submit" disabled={loading} className="w-full">
             {loading ? "Creating account…" : "Create account"}
           </PrimaryButton>
+          <div className="flex justify-center pt-1">
+            <GoogleAuthButton onCredential={handleGoogleCredential} text="signup_with" disabled={loading} />
+          </div>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">

@@ -1,11 +1,10 @@
 const Inventory = require("../models/Inventory");
 const {
-  store,
   syncInventoryAdd,
   syncInventoryRemove,
   syncInventoryStatusChange,
-  getAllStockSnapshot,
 } = require("../utils/store");
+const { BLOOD_GROUPS } = require("../utils/constants");
 
 // ---------- CRUD ----------
 
@@ -42,35 +41,55 @@ async function deleteBatch(req, res) {
 
 async function stockByGroup(req, res) {
   const { bloodGroup } = req.params;
-  const units = store.inventoryByGroup.get(bloodGroup) || [];
+  const batches = await Inventory.find({ bloodGroup, status: "available" }).sort({ expiryDate: 1 }).lean();
   res.json({
     bloodGroup,
-    totalUnits: units.reduce((sum, u) => sum + (u.units || 0), 0),
-    batchCount: units.length,
-    batches: units,
+    totalUnits: batches.reduce((sum, batch) => sum + (batch.units || 0), 0),
+    batchCount: batches.length,
+    batches,
   });
 }
 
 async function stockSnapshot(req, res) {
-  res.json({ snapshot: getAllStockSnapshot() });
+  const rows = await Inventory.aggregate([
+    { $match: { status: "available" } },
+    { $group: { _id: "$bloodGroup", totalUnits: { $sum: "$units" } } },
+  ]);
+  const snapshot = BLOOD_GROUPS.reduce((acc, group) => {
+    acc[group] = 0;
+    return acc;
+  }, {});
+  rows.forEach((row) => {
+    snapshot[row._id] = row.totalUnits;
+  });
+  res.json({ snapshot });
 }
 
 // ---------- Min Heap: Blood Expiry Tracking ----------
 
 async function expiringSoon(req, res) {
   const days = Number(req.query.days) || Number(process.env.EXPIRY_ALERT_DAYS) || 7;
-  const units = store.expiryHeap.expiringWithin(days);
+  const now = new Date();
+  const endDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+  const units = await Inventory.find({
+    status: "available",
+    expiryDate: { $gte: now, $lte: endDate },
+  })
+    .sort({ expiryDate: 1 })
+    .lean();
   res.json({ withinDays: days, count: units.length, units });
 }
 
 async function expiredUnits(req, res) {
-  const units = store.expiryHeap.expired();
+  const units = await Inventory.find({ status: "available", expiryDate: { $lt: new Date() } })
+    .sort({ expiryDate: 1 })
+    .lean();
   res.json({ count: units.length, units });
 }
 
 /** Marks all currently-expired available batches as status "expired" in both DB and memory */
 async function sweepExpired(req, res) {
-  const expired = store.expiryHeap.expired();
+  const expired = await Inventory.find({ status: "available", expiryDate: { $lt: new Date() } }).lean();
   const ids = expired.map((u) => u._id);
   if (ids.length > 0) {
     await Inventory.updateMany({ _id: { $in: ids } }, { $set: { status: "expired" } });

@@ -7,7 +7,7 @@ const router = express.Router();
 
 router.use(protect);
 
-router.get("/queue", allowRoles("admin", "hospital"), ctrl.queueView);
+router.get("/queue", allowRoles("admin"), ctrl.queueView);
 router.post("/process-next", allowRoles("admin"), ctrl.processNext);
 
 router.post("/", allowRoles("admin", "hospital"), ctrl.createRequest);

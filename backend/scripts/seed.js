@@ -2,7 +2,6 @@ require("dotenv").config();
 const mongoose = require("mongoose");
 const connectDB = require("../config/db");
 
-const User = require("../models/User");
 const Donor = require("../models/Donor");
 const Hospital = require("../models/Hospital");
 const Inventory = require("../models/Inventory");
@@ -29,19 +28,12 @@ async function seed() {
   await connectDB();
   console.log("[Seed] Clearing existing collections...");
   await Promise.all([
-    User.deleteMany({}),
     Donor.deleteMany({}),
     Hospital.deleteMany({}),
     Inventory.deleteMany({}),
     Request.deleteMany({}),
     Donation.deleteMany({}),
     Broadcast.deleteMany({}),
-  ]);
-
-  console.log("[Seed] Creating users...");
-  await User.create([
-    { name: "System Admin", email: "admin@bloodbank.test", password: "admin123", role: "admin" },
-    { name: "City Hospital Desk", email: "hospital@bloodbank.test", password: "hospital123", role: "hospital" },
   ]);
 
   console.log("[Seed] Creating hospitals...");
@@ -138,8 +130,7 @@ async function seed() {
   await Donation.insertMany(donationDocs);
 
   console.log("\n[Seed] Done.");
-  console.log("Login as admin:    admin@bloodbank.test / admin123");
-  console.log("Login as hospital: hospital@bloodbank.test / hospital123\n");
+  console.log("No user accounts are created by this script. Register real users from the app.\n");
 
   await mongoose.disconnect();
   process.exit(0);

@@ -11,6 +11,9 @@ async function protect(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id);
     if (!user) return res.status(401).json({ message: "User no longer exists" });
+    if ((decoded.tokenVersion || 0) !== (user.tokenVersion || 0)) {
+      return res.status(401).json({ message: "Session expired. Please sign in again" });
+    }
     req.user = user;
     next();
   } catch (err) {

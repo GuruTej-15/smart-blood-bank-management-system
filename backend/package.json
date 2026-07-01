@@ -9,6 +9,7 @@
     "dev": "nodemon server.js",
     "generate-secret": "node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",
     "seed": "node scripts/seed.js",
+    "purge:seed": "node scripts/purgeSeedData.js",
     "test:ds": "node scripts/testDataStructures.js"
   },
   "dependencies": {
@@ -17,10 +18,12 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^8.0.0",
+    "google-auth-library": "^9.15.1",
     "helmet": "^8.0.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.5.0",
     "morgan": "^1.10.0",
+    "nodemailer": "^6.10.1",
     "qrcode": "^1.5.3"
   },
   "devDependencies": {

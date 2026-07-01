@@ -4,7 +4,6 @@ const { checkEligibility } = require("../utils/eligibility");
 const { compatibleRecipientsFor } = require("../utils/compatibility");
 const { REWARD_LEVELS } = require("../utils/constants");
 const {
-  store,
   syncDonorInsert,
   syncDonorUpdate,
   syncDonorDelete,
@@ -24,17 +23,17 @@ async function createDonor(req, res) {
 }
 
 async function listDonors(req, res) {
-  // Served straight from the in-memory Linked List (Donor Records) rather than re-querying Mongo
   const { bloodGroup } = req.query;
-  let donors = store.donorList.toArray();
-  if (bloodGroup) donors = donors.filter((d) => d.bloodGroup === bloodGroup);
+  const filter = {};
+  if (bloodGroup) filter.bloodGroup = bloodGroup;
+  const donors = await Donor.find(filter).sort({ createdAt: -1 }).lean();
   res.json({ count: donors.length, donors });
 }
 
 async function getDonor(req, res) {
-  const node = store.donorList.find((d) => String(d._id) === req.params.id);
-  if (!node) return res.status(404).json({ message: "Donor not found" });
-  res.json(node.data);
+  const donor = await Donor.findById(req.params.id).lean();
+  if (!donor) return res.status(404).json({ message: "Donor not found" });
+  res.json(donor);
 }
 
 async function updateDonor(req, res) {
@@ -51,18 +50,22 @@ async function deleteDonor(req, res) {
   res.json({ message: "Donor deleted", id: donor._id });
 }
 
-// ---------- Search (Linked List traversal) ----------
+// ---------- Search ----------
 
 async function searchDonors(req, res) {
   const q = String(req.query.q || "").trim().toLowerCase();
   if (!q) return res.json({ count: 0, donors: [] });
-  const results = store.donorList.filter(
-    (d) =>
-      d.name?.toLowerCase().includes(q) ||
-      d.phone?.includes(q) ||
-      d.bloodGroup?.toLowerCase() === q ||
-      d.email?.toLowerCase().includes(q)
-  );
+  const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const results = await Donor.find({
+    $or: [
+      { name: regex },
+      { phone: regex },
+      { email: regex },
+      { bloodGroup: String(req.query.q || "").trim().toUpperCase() },
+    ],
+  })
+    .sort({ createdAt: -1 })
+    .lean();
   res.json({ count: results.length, donors: results });
 }
 
@@ -77,8 +80,12 @@ async function smartFinder(req, res) {
     compatibleRecipientsFor(donorGroup).includes(bloodGroup)
   );
 
-  const candidates = store.donorList
-    .filter((d) => d.isActive !== false && compatibleGroups.includes(d.bloodGroup))
+  const donors = await Donor.find({
+    isActive: { $ne: false },
+    bloodGroup: { $in: compatibleGroups },
+  }).lean();
+
+  const candidates = donors
     .map((d) => ({ ...d, eligibility: checkEligibility(d) }))
     .filter((d) => d.eligibility.eligible)
     // Exact blood-group match first, then by recency of last donation (longer rested = prioritized)
@@ -96,22 +103,22 @@ async function smartFinder(req, res) {
 // ---------- Donation Eligibility Checker ----------
 
 async function eligibilityCheck(req, res) {
-  const node = store.donorList.find((d) => String(d._id) === req.params.id);
-  if (!node) return res.status(404).json({ message: "Donor not found" });
-  res.json({ donorId: node.data._id, ...checkEligibility(node.data) });
+  const donor = await Donor.findById(req.params.id).lean();
+  if (!donor) return res.status(404).json({ message: "Donor not found" });
+  res.json({ donorId: donor._id, ...checkEligibility(donor) });
 }
 
 // ---------- Donor Reward System ----------
 
 async function rewardInfo(req, res) {
-  const node = store.donorList.find((d) => String(d._id) === req.params.id);
-  if (!node) return res.status(404).json({ message: "Donor not found" });
-  const totalDonations = node.data.totalDonations || 0;
+  const donor = await Donor.findById(req.params.id).lean();
+  if (!donor) return res.status(404).json({ message: "Donor not found" });
+  const totalDonations = donor.totalDonations || 0;
   const level = rewardLevelFor(totalDonations);
   const currentTierIndex = REWARD_LEVELS.findIndex((l) => l.name === level);
   const next = REWARD_LEVELS[currentTierIndex + 1] || null;
   res.json({
-    donorId: node.data._id,
+    donorId: donor._id,
     totalDonations,
     level,
     nextLevel: next ? { name: next.name, donationsNeeded: next.min - totalDonations } : null,
@@ -121,7 +128,7 @@ async function rewardInfo(req, res) {
 // Top Donor Ranking System (Max Heap leaderboard)
 async function leaderboard(req, res) {
   const n = Number(req.query.limit) || 10;
-  const top = store.donorRankHeap.topN(n).map((d) => ({
+  const top = (await Donor.find().sort({ totalDonations: -1, createdAt: 1 }).limit(n).lean()).map((d) => ({
     ...d,
     level: rewardLevelFor(d.totalDonations || 0),
   }));
@@ -131,9 +138,8 @@ async function leaderboard(req, res) {
 // ---------- Digital Donor Card ----------
 
 async function donorCard(req, res) {
-  const node = store.donorList.find((d) => String(d._id) === req.params.id);
-  if (!node) return res.status(404).json({ message: "Donor not found" });
-  const donor = node.data;
+  const donor = await Donor.findById(req.params.id).lean();
+  if (!donor) return res.status(404).json({ message: "Donor not found" });
 
   const payload = JSON.stringify({
     donorId: donor._id,

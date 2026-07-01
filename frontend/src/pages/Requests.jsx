@@ -7,8 +7,9 @@ import Badge from "../components/Badge";
 import { Field, TextInput, Select, PrimaryButton, SecondaryButton } from "../components/Form";
 import { Spinner, EmptyState } from "../components/Status";
 import { BLOOD_GROUPS, STATUS_STYLES, formatDate } from "../utils/constants";
+import { useAuth } from "../context/AuthContext";
 
-function CreateRequestForm({ onCreated, onCancel }) {
+function CreateRequestForm({ onCreated, onCancel, isHospitalUser }) {
   const [hospitals, setHospitals] = useState([]);
   const [form, setForm] = useState({
     hospital: "",
@@ -21,11 +22,12 @@ function CreateRequestForm({ onCreated, onCancel }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (isHospitalUser) return;
     api.get("/hospitals").then(({ data }) => {
       setHospitals(data.hospitals);
       if (data.hospitals[0]) setForm((f) => ({ ...f, hospital: data.hospitals[0]._id }));
     });
-  }, []);
+  }, [isHospitalUser]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -44,15 +46,17 @@ function CreateRequestForm({ onCreated, onCancel }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className="rounded-lg bg-pulse-light px-3 py-2 text-sm text-pulse">{error}</p>}
-      <Field label="Hospital">
-        <Select required value={form.hospital} onChange={(e) => setForm({ ...form, hospital: e.target.value })}>
-          {hospitals.map((h) => (
-            <option key={h._id} value={h._id}>
-              {h.hospitalName}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      {!isHospitalUser && (
+        <Field label="Hospital">
+          <Select required value={form.hospital} onChange={(e) => setForm({ ...form, hospital: e.target.value })}>
+            {hospitals.map((h) => (
+              <option key={h._id} value={h._id}>
+                {h.hospitalName}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      )}
       <Field label="Patient name (optional)">
         <TextInput value={form.patientName} onChange={(e) => setForm({ ...form, patientName: e.target.value })} />
       </Field>
@@ -94,6 +98,9 @@ function CreateRequestForm({ onCreated, onCancel }) {
 }
 
 export default function Requests() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+  const isHospital = user?.role === "hospital";
   const [requests, setRequests] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
@@ -120,16 +127,21 @@ export default function Requests() {
   }
 
   const pending = requests?.filter((r) => r.status === "pending" && !r.isEmergency) || [];
+  const queueTitle = isAdmin ? "Pending Queue (FCFS)" : "My Pending Requests";
+  const emptyPendingLabel = isAdmin ? "Queue is empty" : "No pending requests";
+  const allRequestsTitle = isHospital ? "My Requests" : "All Requests";
 
   return (
     <div className="space-y-6">
       <Card
-        title="Pending Queue (FCFS)"
+        title={queueTitle}
         action={
           <div className="flex gap-2">
-            <SecondaryButton onClick={processNext}>
-              <PlayCircle size={16} /> Process Next
-            </SecondaryButton>
+            {isAdmin && (
+              <SecondaryButton onClick={processNext}>
+                <PlayCircle size={16} /> Process Next
+              </SecondaryButton>
+            )}
             <PrimaryButton onClick={() => setCreateOpen(true)}>
               <Plus size={16} /> New Request
             </PrimaryButton>
@@ -140,7 +152,7 @@ export default function Requests() {
         {!requests ? (
           <Spinner />
         ) : pending.length === 0 ? (
-          <EmptyState label="Queue is empty" />
+          <EmptyState label={emptyPendingLabel} />
         ) : (
           <ol className="space-y-2">
             {pending.map((r, i) => (
@@ -155,27 +167,31 @@ export default function Requests() {
                   </p>
                   <p className="text-xs text-muted">{r.patientName || "—"}</p>
                 </div>
-                <button
-                  onClick={() => approve(r._id)}
-                  className="rounded-lg bg-vital-light p-2 text-vital hover:opacity-80"
-                  title="Approve & fulfill"
-                >
-                  <Check size={16} />
-                </button>
-                <button
-                  onClick={() => reject(r._id)}
-                  className="rounded-lg bg-pulse-light p-2 text-pulse hover:opacity-80"
-                  title="Reject"
-                >
-                  <X size={16} />
-                </button>
+                {isAdmin && (
+                  <>
+                    <button
+                      onClick={() => approve(r._id)}
+                      className="rounded-lg bg-vital-light p-2 text-vital hover:opacity-80"
+                      title="Approve & fulfill"
+                    >
+                      <Check size={16} />
+                    </button>
+                    <button
+                      onClick={() => reject(r._id)}
+                      className="rounded-lg bg-pulse-light p-2 text-pulse hover:opacity-80"
+                      title="Reject"
+                    >
+                      <X size={16} />
+                    </button>
+                  </>
+                )}
               </li>
             ))}
           </ol>
         )}
       </Card>
 
-      <Card title="All Requests">
+      <Card title={allRequestsTitle}>
         {!requests ? (
           <Spinner />
         ) : (
@@ -214,6 +230,7 @@ export default function Requests() {
 
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="New Blood Request">
         <CreateRequestForm
+          isHospitalUser={isHospital}
           onCreated={() => {
             setCreateOpen(false);
             load();

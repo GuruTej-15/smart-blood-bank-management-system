@@ -67,16 +67,20 @@ cd backend
 cp .env.example .env       # edit MONGO_URI / JWT_SECRET if needed
 npm install
 npm run test:ds            # optional: verifies all 6 data structures, no DB needed
-npm run seed                # populates sample donors, inventory, requests, hospitals
 npm run dev                  # starts the API on http://localhost:5000
 ```
 
-Seeded login accounts (also printed at the end of `npm run seed`):
+For existing projects that previously used demo data:
 
-| Role     | Email                     | Password   |
-|----------|---------------------------|------------|
-| Admin    | admin@bloodbank.test      | admin123   |
-| Hospital | hospital@bloodbank.test   | hospital123|
+```bash
+npm run purge:seed          # removes known seed/demo records only
+```
+
+Optional for local development demos only:
+
+```bash
+npm run seed                # seeds non-user sample entities (no user accounts)
+```
 
 ## 3. Frontend Setup
 
@@ -87,7 +91,33 @@ npm install
 npm run dev                  # starts the UI on http://localhost:5173
 ```
 
-Open `http://localhost:5173`, log in with the seeded admin account above.
+Open `http://localhost:5173`, register a real account, and sign in.
+
+## Authentication Security Upgrades
+
+- OTP-based forgot password flow with SMTP mail delivery:
+   - `POST /api/auth/forgot-password/request`
+   - `POST /api/auth/forgot-password/reset`
+- Google Sign-In / Sign-Up with verified Google ID token:
+   - `POST /api/auth/google`
+- Admin onboarding now requires invite codes:
+   - One-time bootstrap (`ADMIN_BOOTSTRAP_CODE`) can create the very first admin only.
+   - Existing admins issue/revoke time-bound invite codes:
+      - `POST /api/auth/admin-invites`
+      - `GET /api/auth/admin-invites`
+      - `POST /api/auth/admin-invites/:id/revoke`
+- JWT session hardening:
+   - Token versioning invalidates all old sessions on password reset.
+   - Failed login lockout controls brute-force attempts.
+
+Required backend env vars for these features:
+
+- `GOOGLE_CLIENT_ID`
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- `OTP_LENGTH`, `OTP_EXPIRY_MINUTES`, `OTP_MAX_ATTEMPTS`
+- `AUTH_MAX_FAILED_ATTEMPTS`, `AUTH_LOCK_MINUTES`
+- `ADMIN_BOOTSTRAP_CODE`, `ADMIN_INVITE_EXPIRES_HOURS`
+- `SECURITY_PEPPER`
 
 ---
 

@@ -6,8 +6,14 @@ const passwordResetOtpSchema = new mongoose.Schema(
     email: { type: String, required: true, lowercase: true, trim: true, index: true },
     otpHash: { type: String, required: true },
     expiresAt: { type: Date, required: true, index: true },
+    status: { type: String, enum: ["pending", "verified", "consumed", "revoked"], default: "pending", index: true },
     consumedAt: { type: Date, default: null },
+    verifiedAt: { type: Date, default: null },
+    verificationTokenHash: { type: String, default: null },
+    verificationTokenExpiresAt: { type: Date, default: null, index: true },
     attempts: { type: Number, default: 0 },
+    requestIp: { type: String, default: null },
+    userAgent: { type: String, default: null },
   },
   { timestamps: true }
 );

@@ -22,7 +22,11 @@ function generateInviteCode(bytes = 16) {
 }
 
 function isStrongPassword(password) {
-  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(String(password || ""));
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(String(password || ""));
+}
+
+function generateSecureToken(bytes = 32) {
+  return crypto.randomBytes(bytes).toString("hex");
 }
 
 module.exports = {
@@ -31,4 +35,5 @@ module.exports = {
   generateNumericOtp,
   generateInviteCode,
   isStrongPassword,
+  generateSecureToken,
 };

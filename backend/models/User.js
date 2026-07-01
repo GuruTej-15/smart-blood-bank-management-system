@@ -26,8 +26,8 @@ userSchema.path("password").validate(function validatePassword(value) {
   if (!value) {
     return false;
   }
-  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value);
-}, "Password must be at least 8 characters and include uppercase, lowercase, and a number");
+  return /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(value);
+}, "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character");
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();

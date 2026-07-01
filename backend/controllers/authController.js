@@ -2,14 +2,16 @@ const User = require("../models/User");
 const Donor = require("../models/Donor");
 const Hospital = require("../models/Hospital");
 const PasswordResetOtp = require("../models/PasswordResetOtp");
+const PasswordResetAudit = require("../models/PasswordResetAudit");
 const AdminInviteCode = require("../models/AdminInviteCode");
 const generateToken = require("../utils/generateToken");
-const { sendOtpEmail } = require("../utils/email");
+const { sendOtpEmail, sendPasswordChangedEmail } = require("../utils/email");
 const {
   normalizeEmail,
   hashValue,
   generateNumericOtp,
   generateInviteCode,
+  generateSecureToken,
   isStrongPassword,
 } = require("../utils/security");
 const { OAuth2Client } = require("google-auth-library");
@@ -27,7 +29,7 @@ function validateCommonFields({ name, email, password }) {
     return "Please provide a valid email address";
   }
   if (!isStrongPassword(password)) {
-    return "Password must be at least 8 characters and include uppercase, lowercase, and a number";
+    return "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character";
   }
   return null;
 }
@@ -101,6 +103,41 @@ function authResponse(user) {
     user: user.toSafeObject(),
     token: generateToken(user),
   };
+}
+
+function getPasswordResetConfig() {
+  return {
+    otpLength: Number(process.env.OTP_LENGTH) || 6,
+    otpExpiryMinutes: Number(process.env.OTP_EXPIRY_MINUTES) || 10,
+    otpMaxAttempts: Number(process.env.OTP_MAX_ATTEMPTS) || 5,
+    sessionMinutes: Number(process.env.PASSWORD_RESET_SESSION_MINUTES) || 15,
+  };
+}
+
+function passwordValidationMessage() {
+  return "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character";
+}
+
+function getRequestMeta(req) {
+  return {
+    ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
+    userAgent: req.headers["user-agent"] || null,
+  };
+}
+
+async function logPasswordResetEvent({ req, user = null, email, action, success, meta = {} }) {
+  try {
+    await PasswordResetAudit.create({
+      user: user?._id || user || null,
+      email,
+      action,
+      success,
+      ...getRequestMeta(req),
+      meta,
+    });
+  } catch (err) {
+    console.error("[PasswordResetAudit]", err.message || err);
+  }
 }
 
 async function createLinkedProfileForRole(role, payload) {
@@ -225,57 +262,119 @@ async function forgotPasswordRequest(req, res) {
 
   const user = await User.findOne({ email });
   if (!user) {
-    return res.json({ message: "If the email exists, an OTP has been sent" });
+    await logPasswordResetEvent({ req, email, action: "request_missing_user", success: true });
+    return res.json({ message: "If the email exists, a verification code has been sent" });
   }
 
-  const otpLength = Number(process.env.OTP_LENGTH) || 6;
-  const otpExpiryMinutes = Number(process.env.OTP_EXPIRY_MINUTES) || 10;
+  const { otpLength, otpExpiryMinutes } = getPasswordResetConfig();
   const otp = generateNumericOtp(otpLength);
 
-  await PasswordResetOtp.deleteMany({ email, consumedAt: null });
+  await PasswordResetOtp.deleteMany({ email, status: { $in: ["pending", "verified", "revoked"] } });
   await PasswordResetOtp.create({
     user: user._id,
     email,
     otpHash: hashValue(otp),
     expiresAt: new Date(Date.now() + otpExpiryMinutes * 60 * 1000),
+    status: "pending",
+    ...getRequestMeta(req),
   });
 
-  await sendOtpEmail({ to: email, otp, expiresMinutes: otpExpiryMinutes });
+  await sendOtpEmail({ to: email, otp, expiresMinutes: otpExpiryMinutes, name: user.name });
+  await logPasswordResetEvent({ req, user, email, action: "request", success: true, meta: { otpLength, otpExpiryMinutes } });
 
-  res.json({ message: "If the email exists, an OTP has been sent" });
+  res.json({ message: "If the email exists, a verification code has been sent" });
 }
 
-async function resetPasswordWithOtp(req, res) {
+async function verifyResetOtp(req, res) {
   const email = normalizeEmail(req.body.email);
-  const otp = String(req.body.otp || "").trim();
-  const newPassword = String(req.body.newPassword || "");
+  const otp = String(req.body.otp || "").replace(/\s+/g, "").trim();
 
-  if (!email || !otp || !newPassword) {
-    return res.status(400).json({ message: "email, otp and newPassword are required" });
-  }
-  if (!isStrongPassword(newPassword)) {
-    return res.status(400).json({ message: "Password must be at least 8 characters and include uppercase, lowercase, and a number" });
+  if (!email || !otp) {
+    return res.status(400).json({ message: "email and otp are required" });
   }
 
+  const { otpMaxAttempts, sessionMinutes } = getPasswordResetConfig();
   const otpDoc = await PasswordResetOtp.findOne({
     email,
-    consumedAt: null,
+    status: "pending",
     expiresAt: { $gt: new Date() },
   }).sort({ createdAt: -1 });
 
   if (!otpDoc) {
-    return res.status(400).json({ message: "Invalid or expired OTP" });
+    await logPasswordResetEvent({ req, email, action: "verify_attempt", success: false, meta: { reason: "missing_or_expired" } });
+    return res.status(400).json({ message: "Invalid or expired verification code" });
   }
 
-  const maxOtpAttempts = Number(process.env.OTP_MAX_ATTEMPTS) || 5;
-  if ((otpDoc.attempts || 0) >= maxOtpAttempts) {
-    return res.status(429).json({ message: "Too many invalid OTP attempts. Request a new OTP" });
+  if ((otpDoc.attempts || 0) >= otpMaxAttempts) {
+    otpDoc.status = "revoked";
+    await otpDoc.save();
+    await logPasswordResetEvent({ req, user: otpDoc.user, email, action: "verify_attempt", success: false, meta: { reason: "too_many_attempts" } });
+    return res.status(429).json({ message: "Too many invalid attempts. Request a new verification code" });
   }
 
   if (otpDoc.otpHash !== hashValue(otp)) {
     otpDoc.attempts = (otpDoc.attempts || 0) + 1;
+    if (otpDoc.attempts >= otpMaxAttempts) {
+      otpDoc.status = "revoked";
+    }
     await otpDoc.save();
-    return res.status(400).json({ message: "Invalid or expired OTP" });
+    await logPasswordResetEvent({ req, user: otpDoc.user, email, action: "verify_attempt", success: false, meta: { reason: "invalid_code", attempts: otpDoc.attempts } });
+    return res.status(400).json({ message: "Invalid or expired verification code" });
+  }
+
+  const resetToken = generateSecureToken(32);
+  otpDoc.status = "verified";
+  otpDoc.verifiedAt = new Date();
+  otpDoc.verificationTokenHash = hashValue(resetToken);
+  otpDoc.verificationTokenExpiresAt = new Date(Date.now() + sessionMinutes * 60 * 1000);
+  await otpDoc.save();
+
+  await PasswordResetOtp.deleteMany({
+    email,
+    _id: { $ne: otpDoc._id },
+    status: { $in: ["pending", "verified", "revoked"] },
+  });
+
+  await logPasswordResetEvent({ req, user: otpDoc.user, email, action: "verify_success", success: true, meta: { sessionMinutes } });
+
+  res.json({
+    message: "Verification code accepted",
+    resetToken,
+    resetTokenExpiresAt: otpDoc.verificationTokenExpiresAt,
+  });
+}
+
+async function resetPasswordWithOtp(req, res) {
+  const email = normalizeEmail(req.body.email);
+  const resetToken = String(req.body.resetToken || "").trim();
+  const newPassword = String(req.body.newPassword || "");
+  const confirmPassword = String(req.body.confirmPassword || "");
+
+  if (!email || !resetToken || !newPassword || !confirmPassword) {
+    return res.status(400).json({ message: "email, resetToken, newPassword and confirmPassword are required" });
+  }
+  if (newPassword !== confirmPassword) {
+    return res.status(400).json({ message: "Passwords do not match" });
+  }
+  if (!isStrongPassword(newPassword)) {
+    return res.status(400).json({ message: passwordValidationMessage() });
+  }
+
+  const otpDoc = await PasswordResetOtp.findOne({
+    email,
+    status: "verified",
+    expiresAt: { $gt: new Date() },
+    verificationTokenExpiresAt: { $gt: new Date() },
+  }).sort({ createdAt: -1 });
+
+  if (!otpDoc) {
+    await logPasswordResetEvent({ req, email, action: "reset_failed", success: false, meta: { reason: "missing_or_expired_session" } });
+    return res.status(400).json({ message: "Password reset session is invalid or expired" });
+  }
+
+  if (otpDoc.verificationTokenHash !== hashValue(resetToken)) {
+    await logPasswordResetEvent({ req, user: otpDoc.user, email, action: "reset_failed", success: false, meta: { reason: "invalid_session_token" } });
+    return res.status(400).json({ message: "Password reset session is invalid or expired" });
   }
 
   const user = await User.findOne({ _id: otpDoc.user, email });
@@ -291,10 +390,17 @@ async function resetPasswordWithOtp(req, res) {
   await user.save();
 
   otpDoc.consumedAt = new Date();
+  otpDoc.status = "consumed";
   await otpDoc.save();
-  await PasswordResetOtp.deleteMany({ user: user._id, consumedAt: null });
+  await PasswordResetOtp.deleteMany({
+    email,
+    _id: { $ne: otpDoc._id },
+  });
 
-  res.json(authResponse(user));
+  await sendPasswordChangedEmail({ to: email });
+  await logPasswordResetEvent({ req, user, email, action: "reset_success", success: true });
+
+  res.json({ message: "Password updated successfully" });
 }
 
 async function googleAuth(req, res) {
@@ -439,6 +545,7 @@ module.exports = {
   login,
   me,
   forgotPasswordRequest,
+  verifyResetOtp,
   resetPasswordWithOtp,
   googleAuth,
   createAdminInvite,

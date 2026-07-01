@@ -10,6 +10,9 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [resetTokenExpiresAt, setResetTokenExpiresAt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -20,11 +23,34 @@ export default function ForgotPassword() {
     setMessage("");
     setLoading(true);
     try {
-      const { data } = await api.post("/auth/forgot-password/request", { email });
-      setMessage(data.message || "If the email exists, an OTP has been sent");
+      setOtp("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setResetToken("");
+      setResetTokenExpiresAt("");
+      const { data } = await api.post("/auth/forgot-password", { email });
+      setMessage(data.message || "If the email exists, a verification code has been sent");
+      setStep("verify");
+    } catch (err) {
+      setError(err.response?.data?.message || "Unable to send verification code");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyOtp(e) {
+    e.preventDefault();
+    setError("");
+    setMessage("");
+    setLoading(true);
+    try {
+      const { data } = await api.post("/auth/verify-reset-otp", { email, otp });
+      setResetToken(data.resetToken);
+      setResetTokenExpiresAt(data.resetTokenExpiresAt || "");
+      setMessage(data.message || "Verification code accepted");
       setStep("reset");
     } catch (err) {
-      setError(err.response?.data?.message || "Unable to send OTP");
+      setError(err.response?.data?.message || "Unable to verify code");
     } finally {
       setLoading(false);
     }
@@ -36,7 +62,7 @@ export default function ForgotPassword() {
     setMessage("");
     setLoading(true);
     try {
-      await api.post("/auth/forgot-password/reset", { email, otp, newPassword });
+      await api.post("/auth/reset-password", { email, resetToken, newPassword, confirmPassword });
       setMessage("Password reset successful. You can now sign in.");
       setTimeout(() => navigate("/login"), 900);
     } catch (err) {
@@ -54,7 +80,7 @@ export default function ForgotPassword() {
             <Droplets size={24} />
           </div>
           <h1 className="font-display text-2xl font-semibold text-ink">Reset your password</h1>
-          <p className="mt-1 text-sm text-muted">Use your registered email to receive an OTP code.</p>
+          <p className="mt-1 text-sm text-muted">Request a code, verify it, then set a new password.</p>
         </div>
 
         {step === "request" ? (
@@ -71,13 +97,52 @@ export default function ForgotPassword() {
               />
             </Field>
             <PrimaryButton type="submit" className="w-full" disabled={loading}>
-              {loading ? "Sending OTP..." : "Send OTP"}
+              {loading ? "Sending code..." : "Send verification code"}
             </PrimaryButton>
+          </form>
+        ) : step === "verify" ? (
+          <form onSubmit={verifyOtp} className="space-y-4 rounded-2xl border border-stone bg-white p-6 shadow-sm">
+            {error && <p className="rounded-lg bg-pulse-light px-3 py-2 text-sm text-pulse">{error}</p>}
+            {message && <p className="rounded-lg bg-vital-light px-3 py-2 text-sm text-vital">{message}</p>}
+            <div className="rounded-xl border border-stone bg-paper px-4 py-3 text-sm text-muted">
+              <p className="font-medium text-ink">Verification code sent</p>
+              <p className="mt-1">Enter the 6-digit code from your email to continue.</p>
+            </div>
+            <Field label="Email">
+              <TextInput
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </Field>
+            <Field label="Verification code">
+              <TextInput
+                required
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                inputMode="numeric"
+                maxLength={6}
+                autoComplete="one-time-code"
+              />
+            </Field>
+            <PrimaryButton type="submit" className="w-full" disabled={loading}>
+              {loading ? "Verifying..." : "Verify code"}
+            </PrimaryButton>
+            <SecondaryButton type="button" className="w-full" onClick={() => setStep("request")}>
+              Request new code
+            </SecondaryButton>
           </form>
         ) : (
           <form onSubmit={resetPassword} className="space-y-4 rounded-2xl border border-stone bg-white p-6 shadow-sm">
             {error && <p className="rounded-lg bg-pulse-light px-3 py-2 text-sm text-pulse">{error}</p>}
             {message && <p className="rounded-lg bg-vital-light px-3 py-2 text-sm text-vital">{message}</p>}
+            {resetTokenExpiresAt && (
+              <div className="rounded-xl border border-stone bg-paper px-4 py-3 text-sm text-muted">
+                Reset session active until {new Date(resetTokenExpiresAt).toLocaleString()}.
+              </div>
+            )}
             <Field label="Email">
               <TextInput
                 type="email"
@@ -106,6 +171,18 @@ export default function ForgotPassword() {
                 autoComplete="new-password"
               />
             </Field>
+            <Field label="Confirm password">
+              <TextInput
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                autoComplete="new-password"
+              />
+            </Field>
+            <p className="text-xs leading-6 text-muted">
+              Use at least 8 characters with uppercase, lowercase, a number, and a special character.
+            </p>
             <PrimaryButton type="submit" className="w-full" disabled={loading}>
               {loading ? "Updating..." : "Reset password"}
             </PrimaryButton>

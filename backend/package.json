@@ -5,6 +5,7 @@
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
+    "predev": "node scripts/killDevPort.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "generate-secret": "node -e \"console.log(require('crypto').randomBytes(64).toString('hex'))\"",

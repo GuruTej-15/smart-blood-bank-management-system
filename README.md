@@ -1,207 +1,129 @@
-# Smart Blood Bank Management & Emergency Response System
+# Smart Blood Bank
 
-A full-stack MERN application implementing the project spec: donor management,
-blood inventory, request/emergency handling, expiry tracking, smart donor
-matching, crisis prediction, donor rewards, and a simulated emergency
-broadcast system — all built on top of six hand-implemented data structures.
+Smart Blood Bank is a full-stack web application for managing donors, blood inventory, emergency requests, and hospital coordination. It combines a Node.js and Express backend with a React and Vite frontend to support real-world blood bank workflows in a single dashboard.
 
----
+## What this project does
 
-## Tech Stack
+The platform is designed to help a blood bank or emergency response team:
 
-| Layer    | Technology |
-|----------|------------|
-| Frontend | React 19 (Vite), React Router, Tailwind CSS, Recharts, Axios, lucide-react |
-| Backend  | Node.js, Express |
-| Database | MongoDB (via Mongoose) |
-| Auth     | JWT + bcrypt |
-| Extras   | `qrcode` (digital donor card) |
+- manage donor records and donation history
+- track blood inventory by blood group and expiry date
+- process normal and emergency blood requests
+- support hospital and donation workflows
+- surface analytics, crisis insights, and inventory alerts
+- provide a simulated broadcast system for emergency communication
 
----
+## Main features
 
-## Folder Structure
+- Donor management and smart donor lookup
+- Blood inventory tracking and low-stock alerts
+- Emergency request handling with priority-based processing
+- Compatibility and eligibility checks
+- Analytics dashboard and crisis prediction views
+- Security features such as JWT authentication, rate limiting, password reset, and invite-based admin onboarding
+- Custom data structures implemented in the backend for core operations
 
-```
+## Tech stack
+
+- Frontend: React, Vite, React Router, Tailwind CSS, Recharts, Axios
+- Backend: Node.js, Express, MongoDB with Mongoose
+- Authentication: JWT and bcrypt-based security flows
+- Other libraries: nodemailer, qrcode, helmet, express-rate-limit, and more
+
+## Project structure
+
+```text
 bloodbank/
-├── backend/
-│   ├── config/db.js              # MongoDB connection
-│   ├── dataStructures/           # The 6 core data structures (see below)
-│   ├── models/                   # Mongoose schemas
-│   ├── controllers/              # Route handlers / business logic
-│   ├── routes/                   # Express routers
-│   ├── middleware/                # auth, role guard, error handler
-│   ├── utils/                    # store.js (DS<->DB sync), eligibility,
-│   │                              # compatibility, fulfillment, broadcast
-│   ├── scripts/                  # seed.js, testDataStructures.js
-│   ├── app.js / server.js
-│   └── .env.example
-└── frontend/
-    ├── src/
-    │   ├── pages/                # One file per screen
-    │   ├── components/           # Shared UI (Sidebar, PulseBar, Modal...)
-    │   ├── context/AuthContext.jsx
-    │   ├── api/axios.js
-    │   └── utils/constants.js
-    └── .env.example
+├── backend/           # Express API and business logic
+├── frontend/          # React/Vite client application
+├── README.md          # Main documentation
+└── vercel.json        # Deployment config
 ```
 
----
+## Quick start
 
-## 1. Prerequisites
+### 1. Prerequisites
 
-- **Node.js 18+** and npm
-- **MongoDB** running locally (`mongodb://127.0.0.1:27017`) or a free
-  [MongoDB Atlas](https://www.mongodb.com/atlas) connection string
+- Node.js 18 or newer
+- npm
+- MongoDB running locally or a MongoDB Atlas connection string
 
-If you don't have MongoDB installed locally:
-- macOS: `brew tap mongodb/brew && brew install mongodb-community && brew services start mongodb-community`
-- Windows/Linux: see https://www.mongodb.com/docs/manual/installation/
-- Or skip local install entirely and paste an Atlas URI into `MONGO_URI`
-
----
-
-## 2. Backend Setup
+### 2. Backend setup
 
 ```bash
 cd backend
-cp .env.example .env       # edit MONGO_URI / JWT_SECRET if needed
+cp .env.example .env
 npm install
-npm run test:ds            # optional: verifies all 6 data structures, no DB needed
-npm run dev                  # starts the API on http://localhost:5000
+npm run dev
 ```
 
-For existing projects that previously used demo data:
+The API will run on http://localhost:5000 by default.
 
-```bash
-npm run purge:seed          # removes known seed/demo records only
-```
-
-Optional for local development demos only:
-
-```bash
-npm run seed                # seeds non-user sample entities (no user accounts)
-```
-
-## 3. Frontend Setup
+### 3. Frontend setup
 
 ```bash
 cd frontend
-cp .env.example .env       # defaults to http://localhost:5000/api, edit if needed
+cp .env.example .env
 npm install
-npm run dev                  # starts the UI on http://localhost:5173
+npm run dev
 ```
 
-Open `http://localhost:5173`, register a real account, and sign in.
+The frontend will run on http://localhost:5173 by default.
 
-## Authentication Security Upgrades
+### 4. Optional demo data
 
-- OTP-based forgot password flow with SMTP mail delivery:
-   - `POST /api/auth/forgot-password/request`
-   - `POST /api/auth/forgot-password/reset`
-- Google Sign-In / Sign-Up with verified Google ID token:
-   - `POST /api/auth/google`
-- Admin onboarding now requires invite codes:
-   - One-time bootstrap (`ADMIN_BOOTSTRAP_CODE`) can create the very first admin only.
-   - Existing admins issue/revoke time-bound invite codes:
-      - `POST /api/auth/admin-invites`
-      - `GET /api/auth/admin-invites`
-      - `POST /api/auth/admin-invites/:id/revoke`
-- JWT session hardening:
-   - Token versioning invalidates all old sessions on password reset.
-   - Failed login lockout controls brute-force attempts.
+```bash
+cd backend
+npm run seed
+```
 
-Required backend env vars for these features:
+To remove demo or seed data that was previously inserted:
 
-- `GOOGLE_CLIENT_ID`
-- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
-- `OTP_LENGTH`, `OTP_EXPIRY_MINUTES`, `OTP_MAX_ATTEMPTS`
-- `AUTH_MAX_FAILED_ATTEMPTS`, `AUTH_LOCK_MINUTES`
-- `ADMIN_BOOTSTRAP_CODE`, `ADMIN_INVITE_EXPIRES_HOURS`
-- `SECURITY_PEPPER`
+```bash
+cd backend
+npm run purge:seed
+```
 
----
+## Environment configuration
 
-## Data Structures → Feature Mapping
+Key backend environment variables are defined in [backend/.env.example](backend/.env.example), and the frontend uses [frontend/.env.example](frontend/.env.example).
 
-| Data Structure | File | Used For |
-|---|---|---|
-| **Hash Table** | `dataStructures/HashTable.js` | Blood Group Lookup — O(1) average lookup of available units per group |
-| **Linked List** | `dataStructures/LinkedList.js` | Donor Records — insertion/search/traversal for the donor module & Smart Donor Finder |
-| **Queue** | `dataStructures/Queue.js` | Normal blood requests — strict First-Come-First-Served processing |
-| **Priority Queue (Max Heap)** | `dataStructures/PriorityQueue.js` | Emergency requests — Critical > High > Medium > Normal, FIFO tie-break |
-| **Min Heap** | `dataStructures/MinHeap.js` | Blood expiry tracking — cheapest "what expires soonest?" query, drives FEFO fulfillment |
-| **Max Heap** | `dataStructures/MaxHeap.js` | Top Donor Ranking — leaderboard / reward system |
+Important settings include:
 
-All six are custom implementations (not just wrapped JS objects/arrays) and
-are unit-tested independently in `backend/scripts/testDataStructures.js`
-(`npm run test:ds`, no database required).
+- MONGO_URI for the MongoDB connection
+- JWT_SECRET for signing authentication tokens
+- CORS_ORIGIN for allowed frontend origins
+- SMTP_* settings for password reset and email delivery
+- ADMIN_BOOTSTRAP_CODE for first-admin setup
 
-`backend/utils/store.js` is the glue: MongoDB is the durable source of
-truth, and this module keeps the six structures live in memory, kept in
-sync on every create/update/delete so day-to-day reads/writes operate
-against fast in-memory structures instead of re-querying Mongo every time.
+## Development commands
 
----
+### Backend
 
-## Feature Checklist (per the project spec)
+```bash
+cd backend
+npm start
+npm run dev
+npm run test:ds
+npm run generate-secret
+```
 
-**Core:** Donor management · Blood inventory management · Blood request
-management · Emergency request handling · Dashboard
+### Frontend
 
-**Advanced:** Blood expiry management · Smart Donor Finder · Donation
-eligibility checker · Blood compatibility checker · Analytics dashboard
+```bash
+cd frontend
+npm run dev
+npm run build
+npm run lint
+npm run preview
+```
 
-**Unique:** Blood Crisis Predictor · Donor Reward System (Bronze/Silver/
-Gold/Platinum) · Emergency Broadcast System (simulated) · Digital Donor
-Card (QR code) · AI-Based Demand Insights (explicitly labelled simulation —
-a moving-average projection, not a trained model)
+## Documentation
 
----
+- Backend guide: [backend/README.md](backend/README.md)
+- Frontend guide: [frontend/README.md](frontend/README.md)
 
-## Key Assumptions (documented, configurable via `.env`)
+## Notes
 
-- Donation eligibility: **90 days** between donations (`DONATION_ELIGIBILITY_DAYS`)
-- Whole blood shelf life: **42 days** from collection (standard for whole blood)
-- Low stock threshold: **10 units** (`LOW_STOCK_THRESHOLD`)
-- Expiry alert window: **7 days** (`EXPIRY_ALERT_DAYS`)
-- Fulfillment uses **FEFO** (First-Expiring-First-Out) to minimise wastage
+This project includes a custom in-memory data structure layer in the backend to support fast lookup and workflow logic while still keeping MongoDB as the source of truth. The analytics and crisis pages are intentionally presented as simulation-based views rather than production-grade ML predictions.
 
----
-
-## API Reference (all under `/api`, JWT bearer auth except `/auth/*`)
-
-| Resource | Routes |
-|---|---|
-| Auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me` |
-| Donors | `GET/POST /donors`, `GET/PUT/DELETE /donors/:id`, `GET /donors/search?q=`, `GET /donors/smart-finder?bloodGroup=`, `GET /donors/leaderboard`, `GET /donors/:id/eligibility`, `GET /donors/:id/reward`, `GET /donors/:id/card` |
-| Inventory | `GET/POST /inventory`, `PUT/DELETE /inventory/:id`, `GET /inventory/snapshot`, `GET /inventory/group/:bloodGroup`, `GET /inventory/expiring?days=`, `GET /inventory/expired`, `POST /inventory/sweep-expired` |
-| Requests | `GET/POST /requests`, `GET /requests/:id`, `GET /requests/queue`, `POST /requests/process-next`, `POST /requests/:id/approve`, `POST /requests/:id/reject` |
-| Emergency | `GET/POST /emergency`, `GET /emergency/queue`, `POST /emergency/process-next` |
-| Hospitals | `GET/POST /hospitals`, `GET/PUT/DELETE /hospitals/:id` |
-| Donations | `GET/POST /donations` |
-| Analytics | `GET /analytics/dashboard`, `/most-demanded`, `/monthly-donations`, `/monthly-requests`, `/stock-trend`, `/demand-insights` |
-| Crisis | `GET /crisis/predict?weeks=` |
-| Compatibility | `GET /compatibility/chart`, `GET /compatibility/:bloodGroup` |
-| Broadcast | `POST /broadcast/trigger`, `POST /broadcast/auto-check`, `GET /broadcast/history` |
-
----
-
-## Suggested Viva Talking Points
-
-1. Walk through `utils/store.js` — explain why an in-memory structure is
-   layered on top of MongoDB, and how each mutation stays in sync.
-2. Run `npm run test:ds` live to demonstrate each data structure in
-   isolation.
-3. Trigger an emergency request with insufficient stock from the UI and
-   show the Emergency Broadcast firing in `/broadcast`.
-4. Open the Crisis Predictor and Analytics pages to show the
-   moving-average projections are clearly labelled as simulations, not
-   real ML — an honest, defensible scope boundary for a viva question.
-
----
-
-## Future Scope (as in the original spec, not implemented here)
-
-Mobile app · direct hospital system integration · GPS-based donor search ·
-real SMS/email delivery for broadcasts · trained ML demand forecasting ·
-government blood bank integration.

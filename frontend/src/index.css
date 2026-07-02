@@ -14,12 +14,31 @@ body,
   height: 100%;
 }
 
+html {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
+  min-height: 100vh;
   background-color: #fafaf8;
   color: #1c1917;
   font-family: "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
 }
 
 ::-webkit-scrollbar {
@@ -37,6 +56,18 @@ body {
 :focus-visible {
   outline: 2px solid #9f1239;
   outline-offset: 2px;
+}
+
+@supports (padding: max(0px)) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+@media (max-width: 640px) {
+  body {
+    font-size: 15px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

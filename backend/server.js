@@ -6,6 +6,22 @@ const { initStore } = require("./utils/store");
 
 const PORT = process.env.PORT || 5000;
 
+const requiredEnv = [
+  "JWT_SECRET",
+  "MONGO_URI",
+  "CORS_ORIGIN",
+  "FRONTEND_URL",
+];
+
+const missingEnv = requiredEnv.filter((key) => !process.env[key] || !String(process.env[key]).trim());
+if (missingEnv.length) {
+  const message = `Missing required environment variables: ${missingEnv.join(", ")}`;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(message);
+  }
+  console.warn(`[Server] ${message} - using the app in development mode only is strongly discouraged`);
+}
+
 if (!process.env.JWT_SECRET) {
   const message = "JWT_SECRET is required";
   if (process.env.NODE_ENV === "production") {

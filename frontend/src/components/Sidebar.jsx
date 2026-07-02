@@ -13,6 +13,7 @@ import {
   Radio,
   IdCard,
   LogOut,
+  X,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { getLandingPath } from "../utils/constants";
@@ -42,19 +43,31 @@ const NAV_ITEMS = {
   ],
 };
 
-export default function Sidebar() {
+export default function Sidebar({ mobile = false, onClose }) {
   const { user, logout } = useAuth();
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-stone bg-white">
-      <div className="flex items-center gap-2 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-crimson text-white">
-          <Droplets size={18} />
+    <aside className={`flex h-full ${mobile ? "w-full" : "w-60"} shrink-0 flex-col border-r border-stone bg-white shadow-xl lg:shadow-none`}>
+      <div className="flex items-center justify-between gap-2 px-5 py-5">
+        <div className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-crimson text-white">
+            <Droplets size={18} />
+          </div>
+          <div>
+            <p className="font-display text-base font-semibold leading-tight text-ink">Blood Bank</p>
+            <p className="text-[11px] leading-tight text-muted">Emergency Response System</p>
+          </div>
         </div>
-        <div>
-          <p className="font-display text-base font-semibold leading-tight text-ink">Blood Bank</p>
-          <p className="text-[11px] leading-tight text-muted">Emergency Response System</p>
-        </div>
+        {mobile ? (
+          <button
+            type="button"
+            aria-label="Close navigation"
+            onClick={onClose}
+            className="rounded-lg p-2 text-muted transition-colors hover:bg-paper hover:text-ink lg:hidden"
+          >
+            <X size={18} />
+          </button>
+        ) : null}
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3">
@@ -67,6 +80,7 @@ export default function Sidebar() {
               key={destination}
               to={destination}
               end={end}
+              onClick={() => onClose?.()}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive ? "bg-crimson-light text-crimson" : "text-muted hover:bg-paper hover:text-ink"

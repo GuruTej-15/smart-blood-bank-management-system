@@ -21,6 +21,8 @@ import Leaderboard from "./pages/Leaderboard";
 import Broadcast from "./pages/Broadcast";
 import MyProfile from "./pages/MyProfile";
 import ForgotPassword from "./pages/ForgotPassword";
+import VerifyEmail from "./pages/VerifyEmail";
+import NotFound from "./pages/NotFound";
 
 export default function App() {
   return (
@@ -30,6 +32,8 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
+          <Route path="*" element={<NotFound />} />
 
           <Route
             element={

@@ -50,8 +50,8 @@ function renderEmailShell({ title, heading, childrenHtml, accent = "#b91c1c" }) 
     .slice(0, 2)
     .join("");
   const brandBlock = logoUrl
-    ? `<img src="${logoUrl}" alt="${appName} logo" style="display:block;width:56px;height:56px;border-radius:16px;object-fit:cover;">`
-    : `<div style="width:56px;height:56px;border-radius:16px;background:${accent};color:#fff;display:flex;align-items:center;justify-content:center;font:700 18px/1 Arial, sans-serif;">${brandText}</div>`;
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:56px;height:56px;border-radius:16px;overflow:hidden;background:#ffffff;"><tr><td align="center" valign="middle" style="padding:0;margin:0;width:56px;height:56px;line-height:0;"><img src="${logoUrl}" alt="${appName} logo" width="56" height="56" style="display:block;width:56px;height:56px;border-radius:16px;object-fit:cover;border:0;line-height:0;text-decoration:none;" /></td></tr></table>`
+    : `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:56px;height:56px;border-radius:16px;background:${accent};"><tr><td align="center" valign="middle" style="padding:0;margin:0;width:56px;height:56px;"><span style="display:block;font:700 18px/1 Arial, sans-serif;color:#fff;">${brandText}</span></td></tr></table>`;
 
   return `
   <html>
@@ -65,8 +65,8 @@ function renderEmailShell({ title, heading, childrenHtml, accent = "#b91c1c" }) 
                 <td style="background:linear-gradient(135deg,#7f1d1d 0%,#b91c1c 55%,#ef4444 100%);padding:28px 32px;color:#fff;">
                   <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;">
                     <tr>
-                      <td style="vertical-align:middle;width:72px;">${brandBlock}</td>
-                      <td style="vertical-align:middle;">
+                      <td align="center" valign="middle" style="vertical-align:middle;width:72px;padding:0 0 0 0;text-align:center;line-height:0;">${brandBlock}</td>
+                      <td style="vertical-align:middle;padding-left:16px;">
                         <div style="font-size:12px;letter-spacing:0.16em;text-transform:uppercase;opacity:0.88;">${appName}</div>
                         <div style="font-size:26px;line-height:1.2;font-weight:700;margin-top:6px;">${heading}</div>
                       </td>
@@ -109,15 +109,18 @@ async function sendOtpEmail({ to, otp, expiresMinutes, name }) {
   const subject = "Password Reset OTP";
   const recipientName = String(name || "there").trim() || "there";
   const text = [
-    `Hello ${recipientName},`,
+    `Dear ${recipientName},`,
     "",
-    "Your OTP is:",
+    `Your ${appName} password reset OTP is:`,
     "",
-    otp,
+    `**${otp}**`,
     "",
-    `This OTP is valid for ${expiresMinutes} minutes.`,
+    `This OTP is valid for **${expiresMinutes} minutes**.`,
     "",
-    "If you didn't request this, ignore this email.",
+    "If you did not request a password reset, please ignore this email.",
+    "",
+    "Regards,",
+    `${appName} Team`,
   ].join("\n");
 
   const html = renderEmailShell({
@@ -125,17 +128,23 @@ async function sendOtpEmail({ to, otp, expiresMinutes, name }) {
     heading: "Password Reset OTP",
     childrenHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">
-        Hello <strong>${recipientName}</strong>,
+        Dear <strong>${recipientName}</strong>,
       </p>
-      <p style="margin:0 0 12px;font-size:16px;line-height:1.7;color:#374151;">Your OTP is:</p>
+      <p style="margin:0 0 12px;font-size:16px;line-height:1.7;color:#374151;">
+        Your ${appName} password reset OTP is:
+      </p>
       <div style="margin:20px 0 22px;padding:26px 18px;border:1px solid #d8c6c6;border-radius:22px;background:#fff7f7;text-align:center;">
         <div style="font-size:48px;font-weight:800;letter-spacing:0.28em;color:#7f1d1d;">${otp}</div>
       </div>
       <p style="margin:0 0 10px;font-size:15px;line-height:1.7;color:#374151;">
         This OTP is valid for <strong>${expiresMinutes} minutes</strong>.
       </p>
-      <p style="margin:0;font-size:14px;line-height:1.7;color:#6b7280;">
-        If you didn't request this, ignore this email.
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.7;color:#374151;">
+        If you did not request a password reset, please ignore this email.
+      </p>
+      <p style="margin:24px 0 0;font-size:15px;line-height:1.7;color:#374151;">
+        Regards,<br />
+        ${appName} Team
       </p>
     `,
   });
@@ -143,24 +152,81 @@ async function sendOtpEmail({ to, otp, expiresMinutes, name }) {
   await sendMail({ to, subject, text, html });
 }
 
-async function sendPasswordChangedEmail({ to }) {
+async function sendVerificationEmail({ to, token, expiresMinutes, name }) {
   const { appName } = getAppMeta();
-  const subject = `${appName} password changed successfully`;
+  const subject = `${appName} email verification`;
+  const recipientName = String(name || "there").trim() || "there";
+  const verificationUrl = `${process.env.FRONTEND_URL || "http://localhost:5173"}/verify-email?email=${encodeURIComponent(to)}&token=${encodeURIComponent(token)}`;
   const text = [
-    "Your password has been successfully changed.",
-    "If this was not you, please contact support immediately and secure your account.",
+    `Hello ${recipientName},`,
+    "",
+    "Please verify your email address by visiting the link below:",
+    verificationUrl,
+    "",
+    `This link expires in ${expiresMinutes} minutes.`,
+    "",
+    "If you did not create an account, you can ignore this email.",
   ].join("\n");
 
   const html = renderEmailShell({
-    title: `${appName} password changed`,
+    title: `${appName} email verification`,
+    heading: "Verify your email",
+    childrenHtml: `
+      <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">
+        Hello <strong>${recipientName}</strong>,
+      </p>
+      <p style="margin:0 0 12px;font-size:16px;line-height:1.7;color:#374151;">
+        Please verify your email address by clicking the button below.
+      </p>
+      <div style="margin:22px 0 18px;">
+        <a href="${verificationUrl}" style="display:inline-block;padding:12px 18px;border-radius:999px;background:#7f1d1d;color:#fff;text-decoration:none;font-weight:700;">Verify email</a>
+      </div>
+      <p style="margin:0;font-size:14px;line-height:1.7;color:#6b7280;">
+        This link expires in <strong>${expiresMinutes} minutes</strong>.
+      </p>
+    `,
+    accent: "#7f1d1d",
+  });
+
+  await sendMail({ to, subject, text, html });
+}
+
+async function sendPasswordChangedEmail({ to }) {
+  const { appName } = getAppMeta();
+  const subject = "Password Changed Successfully";
+  const text = [
+    `Dear ${appName} user,`,
+    "",
+    `Your ${appName} account password has been changed successfully.`,
+    "",
+    "If you made this change, no action is required.",
+    "",
+    "If you did not change your password, please contact support immediately.",
+    "",
+    "Regards,",
+    `${appName} Team`,
+  ].join("\n");
+
+  const html = renderEmailShell({
+    title: "Password Changed Successfully",
     heading: "Password changed successfully",
     childrenHtml: `
       <p style="margin:0 0 16px;font-size:16px;line-height:1.7;color:#374151;">
-        Your password has been successfully changed.
+        Dear <strong>${appName} user</strong>,
       </p>
-      <div style="padding:20px 22px;border-radius:18px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:15px;line-height:1.7;">
-        If this action was not performed by you, contact support immediately and review your account security.
-      </div>
+      <p style="margin:0 0 12px;font-size:16px;line-height:1.7;color:#374151;">
+        Your ${appName} account password has been changed successfully.
+      </p>
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.7;color:#374151;">
+        If you made this change, no action is required.
+      </p>
+      <p style="margin:0 0 10px;font-size:15px;line-height:1.7;color:#374151;">
+        If you did not change your password, please contact support immediately.
+      </p>
+      <p style="margin:24px 0 0;font-size:15px;line-height:1.7;color:#374151;">
+        Regards,<br />
+        ${appName} Team
+      </p>
     `,
     accent: "#166534",
   });
@@ -170,5 +236,6 @@ async function sendPasswordChangedEmail({ to }) {
 
 module.exports = {
   sendOtpEmail,
+  sendVerificationEmail,
   sendPasswordChangedEmail,
 };

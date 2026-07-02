@@ -5,63 +5,76 @@ const PasswordResetOtp = require("../models/PasswordResetOtp");
 const PasswordResetAudit = require("../models/PasswordResetAudit");
 const AdminInviteCode = require("../models/AdminInviteCode");
 const generateToken = require("../utils/generateToken");
-const { sendOtpEmail, sendPasswordChangedEmail } = require("../utils/email");
+const { sendOtpEmail, sendPasswordChangedEmail, sendVerificationEmail } = require("../utils/email");
 const {
+  sanitizeInput,
   normalizeEmail,
   hashValue,
   generateNumericOtp,
   generateInviteCode,
   generateSecureToken,
   isStrongPassword,
+  validateFullName,
+  validateEmailAddress,
+  validatePassword,
+  validatePhoneNumber,
+  validateHospitalName,
+  validateContactNumber,
+  validateRole,
 } = require("../utils/security");
-const { OAuth2Client } = require("google-auth-library");
 const { BLOOD_GROUPS } = require("../utils/constants");
 
 const ALLOWED_ROLES = ["admin", "hospital", "donor"];
 
-let googleClient;
-
 function validateCommonFields({ name, email, password }) {
-  if (!name || !email || !password) {
-    return "name, email and password are required";
+  const nameError = validateFullName(name);
+  if (nameError) {
+    return nameError;
   }
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    return "Please provide a valid email address";
+
+  const emailError = validateEmailAddress(email);
+  if (emailError) {
+    return emailError;
   }
-  if (!isStrongPassword(password)) {
-    return "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character";
+
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return passwordError;
   }
+
   return null;
 }
 
-function getGoogleClient() {
-  if (!process.env.GOOGLE_CLIENT_ID) {
-    return null;
-  }
-  if (!googleClient) {
-    googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-  }
-  return googleClient;
-}
-
 function roleFor(inputRole) {
-  return ALLOWED_ROLES.includes(inputRole) ? inputRole : "donor";
+  if (!inputRole) return "donor";
+  const normalizedRole = String(inputRole).trim().toLowerCase();
+  return ALLOWED_ROLES.includes(normalizedRole) ? normalizedRole : "donor";
 }
 
 function validateRoleFields(role, body) {
+  const roleError = validateRole(role);
+  if (roleError) {
+    return roleError;
+  }
+
   if (role === "donor") {
     if (!body.bloodGroup || !BLOOD_GROUPS.includes(body.bloodGroup)) {
       return "A valid bloodGroup is required for donor registration";
     }
-    if (!body.phone) {
-      return "phone is required for donor registration";
+    const phoneError = validatePhoneNumber(body.phone);
+    if (phoneError) {
+      return phoneError;
     }
   }
 
   if (role === "hospital") {
-    const { hospitalName, contactNumber } = body;
-    if (!hospitalName || !contactNumber) {
-      return "hospitalName and contactNumber are required for hospital registration";
+    const hospitalNameError = validateHospitalName(body.hospitalName);
+    if (hospitalNameError) {
+      return hospitalNameError;
+    }
+    const contactNumberError = validateContactNumber(body.contactNumber);
+    if (contactNumberError) {
+      return contactNumberError;
     }
   }
 
@@ -118,6 +131,12 @@ function passwordValidationMessage() {
   return "Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character";
 }
 
+function getEmailVerificationConfig() {
+  return {
+    expiresMinutes: Number(process.env.EMAIL_VERIFICATION_EXPIRES_MINUTES) || 60 * 24,
+  };
+}
+
 function getRequestMeta(req) {
   return {
     ipAddress: req.ip || req.headers["x-forwarded-for"] || null,
@@ -146,11 +165,11 @@ async function createLinkedProfileForRole(role, payload) {
 
   if (role === "donor") {
     donorProfile = await Donor.create({
-      name: payload.name,
-      email: payload.email,
-      phone: String(payload.phone).trim(),
-      bloodGroup: payload.bloodGroup,
-      address: payload.address || "",
+      name: sanitizeInput(payload.name),
+      email: normalizeEmail(payload.email),
+      phone: sanitizeInput(payload.phone),
+      bloodGroup: sanitizeInput(payload.bloodGroup).toUpperCase(),
+      address: sanitizeInput(payload.address || ""),
       age: payload.age ? Number(payload.age) : undefined,
       isActive: true,
     });
@@ -158,10 +177,10 @@ async function createLinkedProfileForRole(role, payload) {
 
   if (role === "hospital") {
     hospitalProfile = await Hospital.create({
-      hospitalName: String(payload.hospitalName).trim(),
-      contactNumber: String(payload.contactNumber).trim(),
-      email: payload.email,
-      address: payload.address || "",
+      hospitalName: sanitizeInput(payload.hospitalName),
+      contactNumber: sanitizeInput(payload.contactNumber),
+      email: normalizeEmail(payload.email),
+      address: sanitizeInput(payload.address || ""),
     });
   }
 
@@ -169,23 +188,39 @@ async function createLinkedProfileForRole(role, payload) {
 }
 
 async function register(req, res) {
-  const { name, email, password, role } = req.body;
+  const name = sanitizeInput(req.body.name);
+  const email = sanitizeInput(req.body.email);
+  const password = sanitizeInput(req.body.password);
+  const role = sanitizeInput(req.body.role);
   const normalizedEmail = normalizeEmail(email);
   const selectedRole = roleFor(role);
+
+  const sanitizedPayload = {
+    ...req.body,
+    name,
+    email: normalizedEmail,
+    password,
+    role: selectedRole,
+    phone: sanitizeInput(req.body.phone),
+    bloodGroup: sanitizeInput(req.body.bloodGroup).toUpperCase(),
+    hospitalName: sanitizeInput(req.body.hospitalName),
+    contactNumber: sanitizeInput(req.body.contactNumber),
+    address: sanitizeInput(req.body.address),
+  };
 
   const commonValidationError = validateCommonFields({ name, email: normalizedEmail, password });
   if (commonValidationError) {
     return res.status(400).json({ message: commonValidationError });
   }
 
-  const roleValidationError = validateRoleFields(selectedRole, req.body);
+  const roleValidationError = validateRoleFields(selectedRole, sanitizedPayload);
   if (roleValidationError) {
     return res.status(400).json({ message: roleValidationError });
   }
 
   let inviteValidation = null;
   if (selectedRole === "admin") {
-    inviteValidation = await validateAdminInviteOrBootstrap(req.body.adminCode);
+    inviteValidation = await validateAdminInviteOrBootstrap(sanitizeInput(req.body.adminCode));
     if (inviteValidation.error) {
       return res.status(403).json({ message: inviteValidation.error });
     }
@@ -194,15 +229,18 @@ async function register(req, res) {
   const exists = await User.findOne({ email: normalizedEmail });
   if (exists) return res.status(409).json({ message: "An account with this email already exists" });
 
+  const phoneExists = selectedRole === "donor"
+    ? await Donor.findOne({ phone: sanitizeInput(req.body.phone) })
+    : null;
+  if (phoneExists) {
+    return res.status(409).json({ message: "A donor with this phone number already exists" });
+  }
+
   let donorProfile = null;
   let hospitalProfile = null;
 
   try {
-    ({ donorProfile, hospitalProfile } = await createLinkedProfileForRole(selectedRole, {
-      ...req.body,
-      name,
-      email: normalizedEmail,
-    }));
+    ({ donorProfile, hospitalProfile } = await createLinkedProfileForRole(selectedRole, sanitizedPayload));
 
     const user = await User.create({
       name,
@@ -212,6 +250,17 @@ async function register(req, res) {
       role: selectedRole,
       donor: donorProfile?._id,
       hospital: hospitalProfile?._id,
+      isEmailVerified: false,
+    });
+
+    const verificationConfig = getEmailVerificationConfig();
+    const verificationToken = generateSecureToken(32);
+    await user.setEmailVerificationToken(verificationToken, verificationConfig.expiresMinutes);
+    await sendVerificationEmail({
+      to: normalizedEmail,
+      token: verificationToken,
+      expiresMinutes: verificationConfig.expiresMinutes,
+      name,
     });
 
     if (inviteValidation?.invite) {
@@ -220,7 +269,10 @@ async function register(req, res) {
       await inviteValidation.invite.save();
     }
 
-    return res.status(201).json(authResponse(user));
+    return res.status(201).json({
+      message: "Account created successfully. A verification email has been sent.",
+      ...authResponse(user),
+    });
   } catch (err) {
     if (donorProfile) await Donor.findByIdAndDelete(donorProfile._id);
     if (hospitalProfile) await Hospital.findByIdAndDelete(hospitalProfile._id);
@@ -229,18 +281,20 @@ async function register(req, res) {
 }
 
 async function login(req, res) {
-  const { email, password } = req.body;
+  const email = sanitizeInput(req.body.email);
+  const password = sanitizeInput(req.body.password);
   if (!email || !password) return res.status(400).json({ message: "email and password are required" });
+
+  const emailError = validateEmailAddress(email);
+  if (emailError) {
+    return res.status(400).json({ message: emailError });
+  }
 
   const user = await User.findOne({ email: normalizeEmail(email) });
   if (!user) return res.status(401).json({ message: "Invalid email or password" });
 
   if (user.isLocked()) {
     return res.status(423).json({ message: "Account temporarily locked due to failed login attempts" });
-  }
-
-  if (user.authProvider === "google" && !user.password) {
-    return res.status(400).json({ message: "This account uses Google sign-in. Continue with Google." });
   }
 
   const match = await user.comparePassword(password);
@@ -254,8 +308,20 @@ async function login(req, res) {
   res.json(authResponse(user));
 }
 
+async function logout(req, res) {
+  try {
+    if (req.user) {
+      req.user.tokenVersion = (req.user.tokenVersion || 0) + 1;
+      await req.user.save();
+    }
+    res.json({ message: "Logged out successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Logout failed" });
+  }
+}
+
 async function forgotPasswordRequest(req, res) {
-  const email = normalizeEmail(req.body.email);
+  const email = normalizeEmail(sanitizeInput(req.body.email));
   if (!email) {
     return res.status(400).json({ message: "email is required" });
   }
@@ -264,6 +330,20 @@ async function forgotPasswordRequest(req, res) {
   if (!user) {
     await logPasswordResetEvent({ req, email, action: "request_missing_user", success: true });
     return res.json({ message: "If the email exists, a verification code has been sent" });
+  }
+
+  const resetRequestLimit = Number(process.env.PASSWORD_RESET_REQUEST_LIMIT) || 3;
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentRequests = await PasswordResetAudit.countDocuments({
+    email,
+    action: "request",
+    success: true,
+    createdAt: { $gte: oneHourAgo },
+  });
+
+  if (recentRequests >= resetRequestLimit) {
+    await logPasswordResetEvent({ req, user, email, action: "request", success: false, meta: { reason: "rate_limited", resetRequestLimit } });
+    return res.status(429).json({ message: "Too many password reset requests. Please try again later." });
   }
 
   const { otpLength, otpExpiryMinutes } = getPasswordResetConfig();
@@ -286,7 +366,7 @@ async function forgotPasswordRequest(req, res) {
 }
 
 async function verifyResetOtp(req, res) {
-  const email = normalizeEmail(req.body.email);
+  const email = normalizeEmail(sanitizeInput(req.body.email));
   const otp = String(req.body.otp || "").replace(/\s+/g, "").trim();
 
   if (!email || !otp) {
@@ -345,10 +425,10 @@ async function verifyResetOtp(req, res) {
 }
 
 async function resetPasswordWithOtp(req, res) {
-  const email = normalizeEmail(req.body.email);
-  const resetToken = String(req.body.resetToken || "").trim();
-  const newPassword = String(req.body.newPassword || "");
-  const confirmPassword = String(req.body.confirmPassword || "");
+  const email = normalizeEmail(sanitizeInput(req.body.email));
+  const resetToken = sanitizeInput(req.body.resetToken);
+  const newPassword = sanitizeInput(req.body.newPassword);
+  const confirmPassword = sanitizeInput(req.body.confirmPassword);
 
   if (!email || !resetToken || !newPassword || !confirmPassword) {
     return res.status(400).json({ message: "email, resetToken, newPassword and confirmPassword are required" });
@@ -383,7 +463,7 @@ async function resetPasswordWithOtp(req, res) {
   }
 
   user.password = newPassword;
-  user.authProvider = user.googleId ? user.authProvider : "local";
+  user.authProvider = "local";
   user.tokenVersion = (user.tokenVersion || 0) + 1;
   user.failedLoginAttempts = 0;
   user.lockUntil = null;
@@ -403,86 +483,33 @@ async function resetPasswordWithOtp(req, res) {
   res.json({ message: "Password updated successfully" });
 }
 
-async function googleAuth(req, res) {
-  const { idToken, role, adminCode } = req.body;
-  if (!idToken) {
-    return res.status(400).json({ message: "idToken is required" });
+async function verifyEmail(req, res) {
+  const email = normalizeEmail(sanitizeInput(req.body.email || req.query.email));
+  const token = sanitizeInput(req.body.token || req.query.token || "");
+
+  if (!email || !token) {
+    return res.status(400).json({ message: "email and token are required" });
   }
 
-  const client = getGoogleClient();
-  if (!client) {
-    return res.status(503).json({ message: "Google auth is not configured" });
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
   }
 
-  const ticket = await client.verifyIdToken({
-    idToken,
-    audience: process.env.GOOGLE_CLIENT_ID,
-  });
-  const payload = ticket.getPayload();
-
-  if (!payload?.email || !payload.email_verified) {
-    return res.status(400).json({ message: "Google account email is missing or unverified" });
+  if (user.isEmailVerified) {
+    return res.json({ message: "Email already verified" });
   }
 
-  const email = normalizeEmail(payload.email);
-  const googleId = payload.sub;
-  const selectedRole = roleFor(role);
-
-  let user = await User.findOne({ $or: [{ googleId }, { email }] });
-  if (user) {
-    if (!user.googleId) {
-      user.googleId = googleId;
-      await user.save();
-    }
-    await user.clearLoginFailures();
-    return res.json(authResponse(user));
+  if (!user.emailVerificationTokenHash || !user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+    return res.status(400).json({ message: "Verification link is expired. Please request a new one." });
   }
 
-  const roleValidationError = validateRoleFields(selectedRole, req.body);
-  if (roleValidationError) {
-    return res.status(400).json({ message: roleValidationError });
+  if (user.emailVerificationTokenHash !== hashValue(token)) {
+    return res.status(400).json({ message: "Invalid verification link" });
   }
 
-  let inviteValidation = null;
-  if (selectedRole === "admin") {
-    inviteValidation = await validateAdminInviteOrBootstrap(adminCode);
-    if (inviteValidation.error) {
-      return res.status(403).json({ message: inviteValidation.error });
-    }
-  }
-
-  let donorProfile = null;
-  let hospitalProfile = null;
-
-  try {
-    ({ donorProfile, hospitalProfile } = await createLinkedProfileForRole(selectedRole, {
-      ...req.body,
-      name: req.body.name || payload.name || "Google User",
-      email,
-    }));
-
-    user = await User.create({
-      name: req.body.name || payload.name || "Google User",
-      email,
-      authProvider: "google",
-      googleId,
-      role: selectedRole,
-      donor: donorProfile?._id,
-      hospital: hospitalProfile?._id,
-    });
-
-    if (inviteValidation?.invite) {
-      inviteValidation.invite.usedBy = user._id;
-      inviteValidation.invite.usedAt = new Date();
-      await inviteValidation.invite.save();
-    }
-
-    return res.status(201).json(authResponse(user));
-  } catch (err) {
-    if (donorProfile) await Donor.findByIdAndDelete(donorProfile._id);
-    if (hospitalProfile) await Hospital.findByIdAndDelete(hospitalProfile._id);
-    return res.status(500).json({ message: err.message || "Google authentication failed" });
-  }
+  await user.markEmailVerified();
+  res.json({ message: "Email verified successfully" });
 }
 
 async function createAdminInvite(req, res) {
@@ -543,11 +570,12 @@ async function me(req, res) {
 module.exports = {
   register,
   login,
+  logout,
   me,
   forgotPasswordRequest,
   verifyResetOtp,
   resetPasswordWithOtp,
-  googleAuth,
+  verifyEmail,
   createAdminInvite,
   listAdminInvites,
   revokeAdminInvite,

@@ -3,6 +3,10 @@ const cors = require("cors");
 const morgan = require("morgan");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const mongoSanitize = require("express-mongo-sanitize");
+const xss = require("xss-clean");
+const hpp = require("hpp");
+const sanitizeRequest = require("./middleware/sanitize");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 
 const authRoutes = require("./routes/authRoutes");
@@ -28,7 +32,10 @@ const allowedOrigins = String(process.env.CORS_ORIGIN || "")
 
 const corsOptions = {
 	origin(origin, callback) {
-		if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+		if (!origin) {
+			return callback(new Error("CORS blocked: origin is required"));
+		}
+		if (allowedOrigins.includes(origin)) {
 			return callback(null, true);
 		}
 		return callback(new Error(`CORS blocked for origin ${origin}`));
@@ -44,15 +51,27 @@ const apiLimiter = rateLimit({
 });
 
 const authLimiter = rateLimit({
-	windowMs: 15 * 60 * 1000,
+	windowMs: 15 * 60 * 60 * 1000,
 	max: Number(process.env.AUTH_RATE_LIMIT) || 20,
 	standardHeaders: true,
 	legacyHeaders: false,
 });
 
-app.use(helmet());
+app.disable("x-powered-by");
+app.use(
+	helmet({
+		contentSecurityPolicy: false,
+		crossOriginEmbedderPolicy: false,
+	})
+);
+app.use(helmet.referrerPolicy({ policy: "no-referrer" }));
+app.use(helmet.permittedCrossDomainPolicies());
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
+app.use(sanitizeRequest);
 app.use("/api/auth", authLimiter);
 app.use("/api", apiLimiter);
 if (process.env.NODE_ENV !== "test") app.use(morgan("dev"));

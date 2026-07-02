@@ -3,11 +3,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { Droplets } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { Field, TextInput, PrimaryButton } from "../components/Form";
-import GoogleAuthButton from "../components/GoogleAuthButton";
 import { getLandingPath } from "../utils/constants";
 
 export default function Login() {
-  const { login, authenticateWithGoogle, loading } = useAuth();
+  const { login, loading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -21,16 +20,6 @@ export default function Login() {
       navigate(getLandingPath(user.role));
     } catch (err) {
       setError(err.response?.data?.message || "Login failed");
-    }
-  }
-
-  async function handleGoogleCredential(idToken) {
-    setError("");
-    try {
-      const user = await authenticateWithGoogle({ idToken });
-      navigate(getLandingPath(user.role));
-    } catch (err) {
-      setError(err.response?.data?.message || "Google sign-in failed");
     }
   }
 
@@ -61,9 +50,6 @@ export default function Login() {
               Forgot password?
             </Link>
           </p>
-          <div className="flex justify-center pt-1">
-            <GoogleAuthButton onCredential={handleGoogleCredential} text="signin_with" disabled={loading} />
-          </div>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">

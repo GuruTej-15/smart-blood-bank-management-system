@@ -1,11 +1,16 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { hashValue } = require("../utils/security");
 
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, minlength: 8 },
+    isEmailVerified: { type: Boolean, default: false },
+    emailVerifiedAt: { type: Date, default: null },
+    emailVerificationTokenHash: { type: String, default: null },
+    emailVerificationExpiresAt: { type: Date, default: null },
     authProvider: { type: String, enum: ["local", "google"], default: "local" },
     googleId: { type: String, default: null, index: true },
     role: { type: String, enum: ["admin", "hospital", "donor"], default: "donor" },
@@ -66,6 +71,20 @@ userSchema.methods.clearLoginFailures = async function () {
   await this.save();
 };
 
+userSchema.methods.markEmailVerified = async function () {
+  this.isEmailVerified = true;
+  this.emailVerifiedAt = new Date();
+  this.emailVerificationTokenHash = null;
+  this.emailVerificationExpiresAt = null;
+  await this.save();
+};
+
+userSchema.methods.setEmailVerificationToken = async function (token, expiresMinutes = 60 * 24) {
+  this.emailVerificationTokenHash = hashValue(token);
+  this.emailVerificationExpiresAt = new Date(Date.now() + expiresMinutes * 60 * 1000);
+  await this.save();
+};
+
 userSchema.methods.toSafeObject = function () {
   const obj = this.toObject();
   delete obj.password;
@@ -73,6 +92,8 @@ userSchema.methods.toSafeObject = function () {
   delete obj.failedLoginAttempts;
   delete obj.lockUntil;
   delete obj.tokenVersion;
+  delete obj.emailVerificationTokenHash;
+  delete obj.emailVerificationExpiresAt;
   return obj;
 };
 

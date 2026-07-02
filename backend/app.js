@@ -33,7 +33,8 @@ const allowedOrigins = String(process.env.CORS_ORIGIN || "")
 const corsOptions = {
 	origin(origin, callback) {
 		if (!origin) {
-			return callback(new Error("CORS blocked: origin is required"));
+			// Allow non-browser or same-service requests without an Origin header.
+			return callback(null, true);
 		}
 		if (allowedOrigins.includes(origin)) {
 			return callback(null, true);

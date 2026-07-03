@@ -142,7 +142,7 @@ async function donorCard(req, res) {
   const donor = await Donor.findById(req.params.id).lean();
   if (!donor) return res.status(404).json({ message: "Donor not found" });
 
-  const scanUrl = buildDonorScanUrl(donor._id);
+  const scanUrl = buildDonorScanUrl(donor._id, req);
   const qrCodeDataUrl = await QRCode.toDataURL(scanUrl);
 
   res.json({
@@ -169,7 +169,7 @@ async function myProfile(req, res) {
   const rewardLevel = rewardLevelFor(donor.totalDonations || 0);
   const currentTierIndex = REWARD_LEVELS.findIndex((l) => l.name === rewardLevel);
   const next = REWARD_LEVELS[currentTierIndex + 1] || null;
-  const scanUrl = buildDonorScanUrl(donor._id);
+  const scanUrl = buildDonorScanUrl(donor._id, req);
   const qrCodeDataUrl = await QRCode.toDataURL(scanUrl);
 
   res.json({

@@ -18,9 +18,10 @@ function readStoredUser() {
 }
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(readStoredUser);
+  const [user, setUser] = useState(() => readStoredUser());
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("sbb_token");
@@ -43,7 +44,10 @@ export function AuthProvider({ children }) {
       .catch(() => {
         setUser(readStoredUser());
       })
-      .finally(() => setInitializing(false));
+      .finally(() => {
+        setAuthReady(true);
+        setInitializing(false);
+      });
   }, []);
 
   const login = useCallback(async (email, password) => {
@@ -90,7 +94,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, initializing }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading, initializing: initializing || !authReady }}>
       {children}
     </AuthContext.Provider>
   );

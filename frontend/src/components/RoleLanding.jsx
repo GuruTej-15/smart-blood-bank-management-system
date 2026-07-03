@@ -8,5 +8,6 @@ export default function RoleLanding() {
   if (initializing) return null;
   if (!user) return <Navigate to="/login" replace />;
 
-  return <Navigate to={getLandingPath(user.role)} replace />;
+  const normalizedRole = String(user.role || "").trim().toLowerCase();
+  return <Navigate to={getLandingPath(normalizedRole)} replace />;
 }

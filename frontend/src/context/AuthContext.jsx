@@ -41,7 +41,8 @@ export function AuthProvider({ children }) {
           setUser(readStoredUser());
         }
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn("Auth initialization failed:", err?.response?.data?.message || err.message || err);
         setUser(readStoredUser());
       })
       .finally(() => {

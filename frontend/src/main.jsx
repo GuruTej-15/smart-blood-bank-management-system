@@ -13,8 +13,12 @@ if ("serviceWorker" in navigator && import.meta.env.PROD) {
   });
 }
 
+import ErrorBoundary from "./ErrorBoundary";
+
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

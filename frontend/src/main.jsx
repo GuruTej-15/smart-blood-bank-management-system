@@ -3,15 +3,12 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
 
-if ("serviceWorker" in navigator) {
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").then((registration) => {
-      registration.update();
-      if (registration.waiting) {
-        registration.waiting.postMessage({ type: "SKIP_WAITING" });
-      }
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      return Promise.all(registrations.map((registration) => registration.unregister()));
     }).catch((err) => {
-      console.warn("Service worker registration failed:", err);
+      console.warn("Service worker cleanup failed:", err);
     });
   });
 }

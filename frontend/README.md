@@ -66,6 +66,10 @@ The frontend depends on:
 
 - VITE_API_URL: the backend API origin used by Axios
 
+For local development, the app uses `frontend/.env` and defaults to `http://localhost:5000/api` if the variable is missing.
+
+When deploying to Vercel, set `VITE_API_URL` in the Vercel project settings to your Render backend origin.
+
 ## Notes
 
 - Authentication tokens are stored in local storage and attached automatically to API requests.

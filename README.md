@@ -83,7 +83,25 @@ To remove demo or seed data that was previously inserted:
 cd backend
 npm run purge:seed
 ```
+## Deployment
 
+This project is configured for a split deployment:
+
+- Backend: deploy to Render as a Node/Express service.
+- Frontend: deploy to Vercel as a static Vite app.
+
+For local development, keep `frontend/.env` set to `VITE_API_URL=http://localhost:5000/api`.
+
+When deploying on Vercel, set the frontend environment variable `VITE_API_URL` to your Render backend origin, for example:
+
+```text
+https://<your-render-service>.onrender.com
+```
+
+If you provide the backend origin without `/api`, the frontend will automatically append `/api` at runtime.
+
+On Render, configure the backend environment variables including `MONGO_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `FRONTEND_URL`.
+`CORS_ORIGIN` should include your Vercel app URL, for example `https://<your-vercel-app>.vercel.app`.
 ## Environment configuration
 
 Key backend environment variables are defined in [backend/.env.example](backend/.env.example), and the frontend uses [frontend/.env.example](frontend/.env.example).

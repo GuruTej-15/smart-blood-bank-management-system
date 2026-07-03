@@ -253,15 +253,9 @@ async function register(req, res) {
       isEmailVerified: false,
     });
 
-    const verificationConfig = getEmailVerificationConfig();
-    const verificationToken = generateSecureToken(32);
-    await user.setEmailVerificationToken(verificationToken, verificationConfig.expiresMinutes);
-    await sendVerificationEmail({
-      to: normalizedEmail,
-      token: verificationToken,
-      expiresMinutes: verificationConfig.expiresMinutes,
-      name,
-    });
+    // Mark email as verified so users can access the app immediately without email verification
+    user.isEmailVerified = true;
+    await user.save();
 
     if (inviteValidation?.invite) {
       inviteValidation.invite.usedBy = user._id;
@@ -270,7 +264,7 @@ async function register(req, res) {
     }
 
     return res.status(201).json({
-      message: "Account created successfully. A verification email has been sent.",
+      message: "Account created successfully.",
       ...authResponse(user),
     });
   } catch (err) {

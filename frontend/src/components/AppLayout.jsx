@@ -10,22 +10,22 @@ export default function AppLayout() {
 
   return (
     <div className="flex min-h-screen bg-paper text-ink">
-      <div className="hidden lg:block">
-        <Sidebar />
+        <div className="hidden xl:block">
+          <Sidebar />
       </div>
 
       {sidebarOpen ? (
         <button
           type="button"
           aria-label="Close navigation"
-          className="fixed inset-0 z-30 bg-stone/60 lg:hidden"
+          className="fixed inset-0 z-30 bg-stone/60 xl:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       ) : null}
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] transform transition-transform duration-200 lg:static lg:w-60 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          className={`fixed inset-y-0 left-0 z-40 w-72 max-w-[85vw] transform transition-transform duration-200 xl:hidden ${
+           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <Sidebar mobile onClose={() => setSidebarOpen(false)} />

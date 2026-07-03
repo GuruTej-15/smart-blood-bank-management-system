@@ -99,9 +99,15 @@ async function sendMail({ to, subject, text, html }) {
     console.log(`[Mail:dev] To:${to} Subject:${subject}\n${text}`);
     return;
   }
-
   const from = process.env.SMTP_FROM || process.env.SMTP_USER;
-  await tx.sendMail({ from, to, subject, text, html });
+  try {
+    const info = await tx.sendMail({ from, to, subject, text, html });
+    console.log(`[Mail] Sent to ${to} id=${info && info.messageId ? info.messageId : 'unknown'}`);
+    return info;
+  } catch (err) {
+    console.error('[Mail] sendMail error:', err && err.message ? err.message : err);
+    throw err;
+  }
 }
 
 async function sendOtpEmail({ to, otp, expiresMinutes, name }) {

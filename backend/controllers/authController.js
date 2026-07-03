@@ -353,10 +353,15 @@ async function forgotPasswordRequest(req, res) {
     ...getRequestMeta(req),
   });
 
-  await sendOtpEmail({ to: email, otp, expiresMinutes: otpExpiryMinutes, name: user.name });
-  await logPasswordResetEvent({ req, user, email, action: "request", success: true, meta: { otpLength, otpExpiryMinutes } });
-
+  // Return success immediately so the user does not wait for email delivery.
   res.json({ message: "If the email exists, a verification code has been sent" });
+
+  sendOtpEmail({ to: email, otp, expiresMinutes: otpExpiryMinutes, name: user.name })
+    .then(() => logPasswordResetEvent({ req, user, email, action: "request", success: true, meta: { otpLength, otpExpiryMinutes } }))
+    .catch(async (err) => {
+      console.error("Failed to send password reset OTP email:", err);
+      await logPasswordResetEvent({ req, user, email, action: "request", success: false, meta: { reason: "email_send_failed", error: err.message } });
+    });
 }
 
 async function verifyResetOtp(req, res) {

@@ -23,9 +23,18 @@ export const REWARD_STYLES = {
 
 export const STAFF_ROLES = ["admin", "hospital"];
 
+export function normalizeRole(role) {
+  const normalized = String(role || "").trim().toLowerCase();
+  if (normalized === "admin") return "admin";
+  if (normalized === "hospital") return "hospital";
+  if (normalized === "donor") return "donor";
+  return "donor";
+}
+
 export function getLandingPath(role) {
-  if (role === "admin") return "/admin-portal";
-  if (role === "hospital") return "/hospital-portal";
+  const normalizedRole = normalizeRole(role);
+  if (normalizedRole === "admin") return "/admin-portal";
+  if (normalizedRole === "hospital") return "/hospital-portal";
   return "/my-profile";
 }
 

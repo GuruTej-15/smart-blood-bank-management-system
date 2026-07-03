@@ -1,13 +1,24 @@
 import { createContext, useContext, useState, useCallback, useEffect } from "react";
 import api from "../api/axios";
+import { normalizeRole } from "../utils/constants";
 
 const AuthContext = createContext(null);
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
+function readStoredUser() {
+  try {
     const raw = localStorage.getItem("sbb_user");
-    return raw ? JSON.parse(raw) : null;
-  });
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed) return null;
+    return { ...parsed, role: normalizeRole(parsed.role) };
+  } catch {
+    localStorage.removeItem("sbb_user");
+    return null;
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [user, setUser] = useState(readStoredUser);
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
 
@@ -21,13 +32,16 @@ export function AuthProvider({ children }) {
     api
       .get("/auth/me")
       .then(({ data }) => {
-        localStorage.setItem("sbb_user", JSON.stringify(data.user));
-        setUser(data.user);
+        const nextUser = data?.user ? { ...data.user, role: normalizeRole(data.user.role) } : null;
+        if (nextUser) {
+          localStorage.setItem("sbb_user", JSON.stringify(nextUser));
+          setUser(nextUser);
+        } else {
+          setUser(readStoredUser());
+        }
       })
       .catch(() => {
-        localStorage.removeItem("sbb_token");
-        localStorage.removeItem("sbb_user");
-        setUser(null);
+        setUser(readStoredUser());
       })
       .finally(() => setInitializing(false));
   }, []);
@@ -36,10 +50,11 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/login", { email, password });
+      const nextUser = { ...data.user, role: normalizeRole(data.user.role) };
       localStorage.setItem("sbb_token", data.token);
-      localStorage.setItem("sbb_user", JSON.stringify(data.user));
-      setUser(data.user);
-      return data.user;
+      localStorage.setItem("sbb_user", JSON.stringify(nextUser));
+      setUser(nextUser);
+      return nextUser;
     } finally {
       setLoading(false);
     }
@@ -49,10 +64,11 @@ export function AuthProvider({ children }) {
     setLoading(true);
     try {
       const { data } = await api.post("/auth/register", payload);
+      const nextUser = { ...data.user, role: normalizeRole(data.user.role) };
       localStorage.setItem("sbb_token", data.token);
-      localStorage.setItem("sbb_user", JSON.stringify(data.user));
-      setUser(data.user);
-      return data.user;
+      localStorage.setItem("sbb_user", JSON.stringify(nextUser));
+      setUser(nextUser);
+      return nextUser;
     } finally {
       setLoading(false);
     }

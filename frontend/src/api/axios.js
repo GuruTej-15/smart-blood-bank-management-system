@@ -18,10 +18,14 @@ api.interceptors.response.use(
   (res) => res,
   (err) => {
     if (err.response?.status === 401) {
-      localStorage.removeItem("sbb_token");
-      localStorage.removeItem("sbb_user");
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+      const hasStoredUser = Boolean(localStorage.getItem("sbb_user"));
+      const isAuthRequest = /\/auth\/(login|me|register)/.test(err.config?.url || "");
+      if (!isAuthRequest && !hasStoredUser) {
+        localStorage.removeItem("sbb_token");
+        localStorage.removeItem("sbb_user");
+        if (!window.location.pathname.startsWith("/login")) {
+          window.location.href = "/login";
+        }
       }
     }
     return Promise.reject(err);

@@ -3,7 +3,9 @@ import { useAuth } from "../context/AuthContext";
 import { getLandingPath } from "../utils/constants";
 
 export default function RoleRoute({ roles, children }) {
-  const { user } = useAuth();
+  const { user, initializing } = useAuth();
+
+  if (initializing) return null;
 
   if (!user) {
     return <Navigate to="/login" replace />;

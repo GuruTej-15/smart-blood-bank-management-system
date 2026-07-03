@@ -8,6 +8,7 @@ const xss = require("xss-clean");
 const hpp = require("hpp");
 const sanitizeRequest = require("./middleware/sanitize");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const { parseAllowedOrigins, isAllowedOrigin } = require("./utils/cors");
 
 const authRoutes = require("./routes/authRoutes");
 const donorRoutes = require("./routes/donorRoutes");
@@ -25,10 +26,7 @@ const app = express();
 
 app.set("trust proxy", 1);
 
-const allowedOrigins = String(process.env.CORS_ORIGIN || "")
-	.split(",")
-	.map((origin) => origin.trim())
-	.filter(Boolean);
+const allowedOrigins = parseAllowedOrigins(process.env.CORS_ORIGIN);
 
 const corsOptions = {
 	origin(origin, callback) {
@@ -36,7 +34,7 @@ const corsOptions = {
 			// Allow non-browser or same-service requests without an Origin header.
 			return callback(null, true);
 		}
-		if (allowedOrigins.includes(origin)) {
+		if (isAllowedOrigin(origin, allowedOrigins)) {
 			return callback(null, true);
 		}
 		return callback(new Error(`CORS blocked for origin ${origin}`));

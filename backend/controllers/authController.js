@@ -92,7 +92,7 @@ async function validateAdminInviteOrBootstrap(adminCodeInput) {
     process.env.ADMIN_BOOTSTRAP_CODE || process.env.ADMIN_REGISTRATION_CODE || ""
   ).trim();
 
-  if (adminCount === 0 && bootstrapCode && adminCode === bootstrapCode) {
+  if (bootstrapCode && adminCode === bootstrapCode) {
     return { bootstrap: true };
   }
 

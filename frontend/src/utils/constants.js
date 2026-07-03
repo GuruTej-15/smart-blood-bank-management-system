@@ -22,6 +22,8 @@ export const REWARD_STYLES = {
 };
 
 export const STAFF_ROLES = ["admin", "hospital"];
+export const ADMIN_ROLES = ["admin"];
+export const HOSPITAL_ROLES = ["hospital"];
 
 export function normalizeRole(role) {
   const normalized = String(role || "").trim().toLowerCase();

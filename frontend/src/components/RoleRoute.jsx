@@ -16,5 +16,13 @@ export default function RoleRoute({ roles, children }) {
     return <Navigate to={getLandingPath(normalizedRole)} replace />;
   }
 
+  if (normalizedRole === "admin" && window.location.pathname === "/hospital-portal") {
+    return <Navigate to="/admin-portal" replace />;
+  }
+
+  if (normalizedRole === "hospital" && window.location.pathname === "/admin-portal") {
+    return <Navigate to="/hospital-portal" replace />;
+  }
+
   return children;
 }

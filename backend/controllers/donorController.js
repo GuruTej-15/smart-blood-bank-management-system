@@ -3,6 +3,7 @@ const Donor = require("../models/Donor");
 const { checkEligibility } = require("../utils/eligibility");
 const { compatibleRecipientsFor } = require("../utils/compatibility");
 const { REWARD_LEVELS } = require("../utils/constants");
+const { buildDonorScanUrl } = require("../utils/qr");
 const {
   syncDonorInsert,
   syncDonorUpdate,
@@ -141,12 +142,8 @@ async function donorCard(req, res) {
   const donor = await Donor.findById(req.params.id).lean();
   if (!donor) return res.status(404).json({ message: "Donor not found" });
 
-  const payload = JSON.stringify({
-    donorId: donor._id,
-    name: donor.name,
-    bloodGroup: donor.bloodGroup,
-  });
-  const qrCodeDataUrl = await QRCode.toDataURL(payload);
+  const scanUrl = buildDonorScanUrl(donor._id);
+  const qrCodeDataUrl = await QRCode.toDataURL(scanUrl);
 
   res.json({
     donor,
@@ -172,13 +169,8 @@ async function myProfile(req, res) {
   const rewardLevel = rewardLevelFor(donor.totalDonations || 0);
   const currentTierIndex = REWARD_LEVELS.findIndex((l) => l.name === rewardLevel);
   const next = REWARD_LEVELS[currentTierIndex + 1] || null;
-  const qrCodeDataUrl = await QRCode.toDataURL(
-    JSON.stringify({
-      donorId: donor._id,
-      name: donor.name,
-      bloodGroup: donor.bloodGroup,
-    })
-  );
+  const scanUrl = buildDonorScanUrl(donor._id);
+  const qrCodeDataUrl = await QRCode.toDataURL(scanUrl);
 
   res.json({
     donor,

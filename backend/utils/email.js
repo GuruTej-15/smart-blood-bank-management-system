@@ -241,6 +241,7 @@ async function sendPasswordChangedEmail({ to }) {
 }
 
 module.exports = {
+  sendMail,
   sendOtpEmail,
   sendVerificationEmail,
   sendPasswordChangedEmail,

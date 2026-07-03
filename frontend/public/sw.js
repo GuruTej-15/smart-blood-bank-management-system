@@ -1,4 +1,4 @@
-const CACHE_NAME = 'smart-blood-bank-v1';
+const CACHE_NAME = 'smart-blood-bank-v2';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -20,6 +20,12 @@ self.addEventListener('activate', (event) => {
       Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
     ).then(() => self.clients.claim())
   );
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', (event) => {

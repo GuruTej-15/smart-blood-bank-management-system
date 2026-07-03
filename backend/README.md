@@ -75,6 +75,15 @@ The backend reads configuration from [.env.example](.env.example). Important val
 - ADMIN_BOOTSTRAP_CODE for initial admin setup
 - OTP_* and PASSWORD_RESET_* settings for security flows
 
+### Deploying on Render
+
+When deploying to Render, configure the service environment variables rather than committing them to source control.
+
+- `FRONTEND_URL` should be your Vercel app URL, for example `https://<your-vercel-app>.vercel.app`
+- `CORS_ORIGIN` should include your Vercel domain and any local URLs used in development, for example:
+  `http://localhost:5173,https://<your-vercel-app>.vercel.app`
+- Use `npm start` as the command for production.
+
 ## API base path
 
 All API routes are served under:

@@ -11,8 +11,9 @@ export default function RoleRoute({ roles, children }) {
     return <Navigate to="/login" replace />;
   }
 
-  if (roles && !roles.includes(user.role)) {
-    return <Navigate to={getLandingPath(user.role)} replace />;
+  const normalizedRole = String(user.role || "").trim().toLowerCase();
+  if (roles && !roles.includes(normalizedRole)) {
+    return <Navigate to={getLandingPath(normalizedRole)} replace />;
   }
 
   return children;

@@ -20,7 +20,7 @@ The platform is designed to help a blood bank or emergency response team:
 - Emergency request handling with priority-based processing
 - Compatibility and eligibility checks
 - Analytics dashboard and crisis prediction views
-- Security features such as JWT authentication, rate limiting, password reset, and invite-based admin onboarding
+- Security features such as JWT authentication, rate limiting, and invite-based admin onboarding
 - Custom data structures implemented in the backend for core operations
 
 ## Tech stack
@@ -28,7 +28,7 @@ The platform is designed to help a blood bank or emergency response team:
 - Frontend: React, Vite, React Router, Tailwind CSS, Recharts, Axios
 - Backend: Node.js, Express, MongoDB with Mongoose
 - Authentication: JWT and bcrypt-based security flows
-- Other libraries: nodemailer, qrcode, helmet, express-rate-limit, and more
+- Other libraries: qrcode, helmet, express-rate-limit, and more
 
 ## Project structure
 
@@ -111,7 +111,6 @@ Important settings include:
 - MONGO_URI for the MongoDB connection
 - JWT_SECRET for signing authentication tokens
 - CORS_ORIGIN for allowed frontend origins
-- SMTP_* settings for password reset and email delivery
 - ADMIN_BOOTSTRAP_CODE for first-admin setup
 
 ## Development commands

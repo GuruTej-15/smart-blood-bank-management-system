@@ -20,8 +20,6 @@ import CrisisPredictor from "./pages/CrisisPredictor";
 import Leaderboard from "./pages/Leaderboard";
 import Broadcast from "./pages/Broadcast";
 import MyProfile from "./pages/MyProfile";
-import ForgotPassword from "./pages/ForgotPassword";
-import VerifyEmail from "./pages/VerifyEmail";
 import DonorScanPage from "./pages/DonorScanPage";
 import NotFound from "./pages/NotFound";
 
@@ -32,8 +30,6 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/qr/:donorId" element={<DonorScanPage />} />
           <Route path="*" element={<NotFound />} />
 

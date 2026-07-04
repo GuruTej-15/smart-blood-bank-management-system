@@ -45,11 +45,6 @@ export default function Login() {
           <PrimaryButton type="submit" disabled={loading} className="w-full">
             {loading ? "Signing in…" : "Sign in"}
           </PrimaryButton>
-          <p className="text-right text-xs">
-            <Link to="/forgot-password" className="font-medium text-crimson hover:underline">
-              Forgot password?
-            </Link>
-          </p>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">

@@ -21,7 +21,6 @@ The backend provides:
 - MongoDB with Mongoose
 - JWT for authentication
 - bcryptjs for password hashing
-- nodemailer for email-based flows
 - qrcode for digital donor card generation
 
 ## Project structure
@@ -71,9 +70,7 @@ The backend reads configuration from [.env.example](.env.example). Important val
 - JWT_SECRET
 - CORS_ORIGIN
 - FRONTEND_URL
-- SMTP_* settings for mail delivery
 - ADMIN_BOOTSTRAP_CODE for initial admin setup
-- OTP_* and PASSWORD_RESET_* settings for security flows
 
 ### Deploying on Render
 

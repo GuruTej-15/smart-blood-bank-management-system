@@ -60,6 +60,22 @@ router.post("/reset-password", resetPasswordLimiter, requireFields(["email", "re
 router.post("/verify-email", requireFields(["email", "token"]), verifyEmail);
 router.post("/forgot-password/request", forgotPasswordLimiter, requireFields(["email"]), forgotPasswordRequest);
 router.post("/forgot-password/reset", resetPasswordLimiter, requireFields(["email", "resetToken", "newPassword", "confirmPassword"]), resetPasswordWithOtp);
+// Protected debug route to test SMTP from deployed backend. Requires header 'x-debug-token' matching DEBUG_SMTP_TOKEN env var.
+router.post("/_debug/smtp-test", requireFields(["email"]), async (req, res) => {
+	try {
+		const token = req.get("x-debug-token") || "";
+		if (!process.env.DEBUG_SMTP_TOKEN || token !== process.env.DEBUG_SMTP_TOKEN) {
+			return res.status(403).json({ message: "Forbidden" });
+		}
+		const { email } = req.body;
+		const { sendMail } = require("../utils/email");
+		await sendMail({ to: email, subject: "Smart Blood Bank — SMTP debug", text: "SMTP debug message", html: "<p>SMTP debug message</p>" });
+		return res.json({ message: `Test email sent to ${email}` });
+	} catch (err) {
+		console.error('[Debug SMTP] sendMail error:', err && err.stack ? err.stack : err);
+		return res.status(500).json({ message: 'SMTP test failed', error: err && err.message ? err.message : String(err) });
+	}
+});
 router.get("/me", protect, me);
 router.post("/admin-invites", protect, allowRoles("admin"), createAdminInvite);
 router.get("/admin-invites", protect, allowRoles("admin"), listAdminInvites);

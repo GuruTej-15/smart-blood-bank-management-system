@@ -12,12 +12,21 @@ function getTransporter() {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   const service = String(process.env.SMTP_SERVICE || "").trim().toLowerCase();
+  const isGmailAccount = String(user || "").toLowerCase().endsWith("@gmail.com");
+  const useGmailService = service === "gmail" || (!service && !host && isGmailAccount);
 
-  if (!user || !pass || (!host && service !== "gmail")) {
+  if (!user || !pass || (!host && !useGmailService)) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("[Mail] SMTP settings are incomplete:", {
+        SMTP_SERVICE: service || undefined,
+        SMTP_HOST: host,
+        SMTP_USER: user ? user.replace(/.(?=.{2}@)/g, "*") : undefined,
+      });
+    }
     return null;
   }
 
-  const transportOptions = service === "gmail"
+  const transportOptions = useGmailService
     ? {
         service: "gmail",
         auth: { user, pass },

@@ -2,14 +2,15 @@ import axios from "axios";
 
 const rawBase = String(import.meta.env.VITE_API_URL || "").trim();
 const autoBase = typeof window !== "undefined" ? `${window.location.origin}/api` : "http://localhost:5000/api";
-const baseRoot = rawBase ? rawBase.replace(/\/+$/, "") : autoBase.replace(/\/+$/, "");
-const baseURL = baseRoot.endsWith("/api") ? baseRoot : `${baseRoot}/api`;
 
 if (!rawBase && typeof window !== "undefined" && window.location.hostname !== "localhost") {
-  console.warn(
-    "VITE_API_URL is not configured. Falling back to the current origin /api path."
+  console.error(
+    "VITE_API_URL is not configured in production. Set VITE_API_URL in your frontend deployment to your backend origin."
   );
 }
+
+const baseRoot = rawBase ? rawBase.replace(/\/+$/, "") : autoBase.replace(/\/+$/, "");
+const baseURL = baseRoot.endsWith("/api") ? baseRoot : `${baseRoot}/api`;
 
 const api = axios.create({
   baseURL,

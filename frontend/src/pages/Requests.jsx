@@ -102,11 +102,15 @@ export default function Requests() {
   const isAdmin = user?.role === "admin";
   const isHospital = user?.role === "hospital";
   const [requests, setRequests] = useState(null);
+  const [stockSnapshot, setStockSnapshot] = useState({});
   const [createOpen, setCreateOpen] = useState(false);
   const [actionMsg, setActionMsg] = useState("");
 
   function load() {
-    api.get("/requests").then(({ data }) => setRequests(data.requests));
+    Promise.all([api.get("/requests"), api.get("/inventory/snapshot")]).then(([reqRes, stockRes]) => {
+      setRequests(reqRes.data.requests);
+      setStockSnapshot(stockRes.data.snapshot);
+    });
   }
 
   useEffect(load, []);
@@ -227,14 +231,20 @@ export default function Requests() {
                     <td className="py-2.5 pr-4 flex items-center gap-2">
                       <Badge className={STATUS_STYLES[r.status]}>{r.status}</Badge>
                       {isAdmin && r.status === "approved" && (
-                        <button
-                          type="button"
-                          onClick={() => fulfillApproved(r._id)}
-                          className="rounded-lg bg-vital-light px-2 py-1 text-xs font-medium text-vital hover:bg-vital/10"
-                          title="Try to fulfill approved request"
-                        >
-                          Fulfill
-                        </button>
+                        stockSnapshot[r.bloodGroup] > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => fulfillApproved(r._id)}
+                            className="rounded-lg bg-vital-light px-2 py-1 text-xs font-medium text-vital hover:bg-vital/10"
+                            title="Try to fulfill approved request"
+                          >
+                            Fulfill
+                          </button>
+                        ) : (
+                          <span className="rounded-lg bg-stone-light px-2 py-1 text-xs font-medium text-stone">
+                            Not available
+                          </span>
+                        )
                       )}
                     </td>
                     <td className="py-2.5 pr-4 text-muted">{formatDate(r.createdAt)}</td>

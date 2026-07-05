@@ -14,6 +14,7 @@ router.post("/", allowRoles("admin", "hospital"), ctrl.createRequest);
 router.get("/", allowRoles("admin", "hospital"), ctrl.listRequests);
 router.get("/:id", allowRoles("admin", "hospital"), ctrl.getRequest);
 router.post("/:id/approve", allowRoles("admin"), ctrl.approveAndFulfill);
+router.post("/:id/fulfill", allowRoles("admin"), ctrl.fulfillApprovedRequest);
 router.post("/:id/reject", allowRoles("admin"), ctrl.rejectRequest);
 
 module.exports = router;

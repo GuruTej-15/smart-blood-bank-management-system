@@ -12,6 +12,7 @@ const requestSchema = new mongoose.Schema(
     status: { type: String, enum: REQUEST_STATUSES, default: "pending" },
     notes: { type: String, default: "" },
     fulfilledUnits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Inventory" }],
+    fulfilledUnitsCount: { type: Number, default: 0 },
     decidedAt: { type: Date },
   },
   { timestamps: true }

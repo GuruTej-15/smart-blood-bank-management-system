@@ -121,6 +121,10 @@ export default function Requests() {
     await api.post(`/requests/${id}/approve`);
     load();
   }
+  async function fulfillApproved(id) {
+    await api.post(`/requests/${id}/fulfill`);
+    load();
+  }
   async function reject(id) {
     await api.post(`/requests/${id}/reject`);
     load();
@@ -202,6 +206,7 @@ export default function Requests() {
                   <th className="py-2 pr-4">Hospital</th>
                   <th className="py-2 pr-4">Blood Group</th>
                   <th className="py-2 pr-4">Units</th>
+                  <th className="py-2 pr-4">Progress</th>
                   <th className="py-2 pr-4">Type</th>
                   <th className="py-2 pr-4">Status</th>
                   <th className="py-2 pr-4">Created</th>
@@ -215,9 +220,22 @@ export default function Requests() {
                       <Badge className="border-crimson/30 bg-crimson-light text-crimson">{r.bloodGroup}</Badge>
                     </td>
                     <td className="py-2.5 pr-4 text-ink">{r.unitsRequired}</td>
+                    <td className="py-2.5 pr-4 text-ink">
+                      {`${r.fulfilledUnitsCount || 0}/${r.unitsRequired}`}
+                    </td>
                     <td className="py-2.5 pr-4 text-muted">{r.isEmergency ? "Emergency" : "Normal"}</td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-2.5 pr-4 flex items-center gap-2">
                       <Badge className={STATUS_STYLES[r.status]}>{r.status}</Badge>
+                      {isAdmin && r.status === "approved" && (
+                        <button
+                          type="button"
+                          onClick={() => fulfillApproved(r._id)}
+                          className="rounded-lg bg-vital-light px-2 py-1 text-xs font-medium text-vital hover:bg-vital/10"
+                          title="Try to fulfill approved request"
+                        >
+                          Fulfill
+                        </button>
+                      )}
                     </td>
                     <td className="py-2.5 pr-4 text-muted">{formatDate(r.createdAt)}</td>
                   </tr>

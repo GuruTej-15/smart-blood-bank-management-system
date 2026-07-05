@@ -48,6 +48,28 @@ async function rejectRequest(req, res) {
   res.json(request);
 }
 
+async function fulfillRequestFromStock(request, unitsToConsume) {
+  const { fulfilledUnits, shortfall, consumedBatches } = await consumeUnits(
+    request.bloodGroup,
+    unitsToConsume
+  );
+
+  request.fulfilledUnitsCount = (request.fulfilledUnitsCount || 0) + fulfilledUnits;
+  request.fulfilledUnits = [
+    ...((request.fulfilledUnits && Array.isArray(request.fulfilledUnits)) ? request.fulfilledUnits : []),
+    ...consumedBatches.map((b) => b.batchId),
+  ];
+  request.status = shortfall === 0 ? "fulfilled" : "approved";
+  request.decidedAt = new Date();
+  await request.save();
+
+  if (request.status !== "pending") {
+    syncRequestRemove(request._id);
+  }
+
+  return { request, fulfilledUnits, shortfall };
+}
+
 /** Approve and attempt to fulfill from current stock immediately */
 async function approveAndFulfill(req, res) {
   const request = await Request.findById(req.params.id);
@@ -56,19 +78,8 @@ async function approveAndFulfill(req, res) {
     return res.status(400).json({ message: `Request already ${request.status}` });
   }
 
-  const { fulfilledUnits, shortfall, consumedBatches } = await consumeUnits(
-    request.bloodGroup,
-    request.unitsRequired
-  );
-
-  request.status = shortfall === 0 ? "fulfilled" : "approved"; // approved-but-partial stays open
-  request.decidedAt = new Date();
-  request.fulfilledUnits = consumedBatches.map((b) => b.batchId);
-  await request.save();
-
-  if (request.status === "fulfilled") {
-    syncRequestRemove(request._id);
-  }
+  const unitsRemaining = request.unitsRequired - (request.fulfilledUnitsCount || 0);
+  const { fulfilledUnits, shortfall } = await fulfillRequestFromStock(request, unitsRemaining);
 
   res.json({
     request,
@@ -76,6 +87,26 @@ async function approveAndFulfill(req, res) {
     shortfall,
     availableNow: getAvailableUnitCount(request.bloodGroup),
   });
+}
+
+async function fulfillApprovedRequest(req, res) {
+  const request = await Request.findById(req.params.id);
+  if (!request) return res.status(404).json({ message: "Request not found" });
+  if (request.status !== "approved") {
+    return res.status(400).json({ message: `Request must be approved to retry fulfillment` });
+  }
+
+  const unitsRemaining = request.unitsRequired - (request.fulfilledUnitsCount || 0);
+  if (unitsRemaining <= 0) {
+    request.status = "fulfilled";
+    request.decidedAt = new Date();
+    await request.save();
+    syncRequestRemove(request._id);
+    return res.json({ request, fulfilledUnits: 0, shortfall: 0, availableNow: getAvailableUnitCount(request.bloodGroup) });
+  }
+
+  const { fulfilledUnits, shortfall } = await fulfillRequestFromStock(request, unitsRemaining);
+  res.json({ request, fulfilledUnits, shortfall, availableNow: getAvailableUnitCount(request.bloodGroup) });
 }
 
 /** Pop the oldest pending normal request and attempt to fulfill it (FCFS) */
@@ -89,19 +120,10 @@ async function processNext(req, res) {
     return res.status(200).json({ message: "Stale entry skipped, call again to process the next one" });
   }
 
-  const { fulfilledUnits, shortfall, consumedBatches } = await consumeUnits(
-    request.bloodGroup,
-    request.unitsRequired
-  );
-  request.status = shortfall === 0 ? "fulfilled" : "approved";
-  request.decidedAt = new Date();
-  request.fulfilledUnits = consumedBatches.map((b) => b.batchId);
-  await request.save();
+  const unitsRemaining = request.unitsRequired - (request.fulfilledUnitsCount || 0);
+  const { fulfilledUnits, shortfall } = await fulfillRequestFromStock(request, unitsRemaining);
 
   store.normalQueue.dequeue();
-  if (request.status === "approved") {
-    // still short on stock - keep it tracked, but don't re-enqueue at the back automatically
-  }
 
   res.json({ request, fulfilledUnits, shortfall });
 }
@@ -113,5 +135,6 @@ module.exports = {
   queueView,
   rejectRequest,
   approveAndFulfill,
+  fulfillApprovedRequest,
   processNext,
 };

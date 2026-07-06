@@ -7,9 +7,12 @@ import Badge from "../components/Badge";
 import EmergencyRequestForm from "../components/EmergencyRequestForm";
 import { SecondaryButton, PrimaryButton } from "../components/Form";
 import { Spinner, EmptyState } from "../components/Status";
+import { useAuth } from "../context/AuthContext";
 import { PRIORITY_STYLES } from "../utils/constants";
 
 export default function Emergency() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
   const [queue, setQueue] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [result, setResult] = useState(null);
@@ -31,11 +34,13 @@ export default function Emergency() {
       <Card
         title="Emergency Priority Queue"
         action={
-          <div className="flex gap-2">
-            <SecondaryButton onClick={processNext}>
-              <PlayCircle size={16} /> Process Most Urgent
-            </SecondaryButton>
-          </div>
+          isAdmin ? (
+            <div className="flex gap-2">
+              <SecondaryButton onClick={processNext}>
+                <PlayCircle size={16} /> Process Most Urgent
+              </SecondaryButton>
+            </div>
+          ) : null
         }
       >
         {result && (
@@ -81,15 +86,17 @@ export default function Emergency() {
         )}
       </Card>
 
-      <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Submit Emergency Request">
-        <EmergencyRequestForm
-          onCreated={() => {
-            setCreateOpen(false);
-            load();
-          }}
-          onCancel={() => setCreateOpen(false)}
-        />
-      </Modal>
+      {isAdmin && (
+        <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Submit Emergency Request">
+          <EmergencyRequestForm
+            onCreated={() => {
+              setCreateOpen(false);
+              load();
+            }}
+            onCancel={() => setCreateOpen(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

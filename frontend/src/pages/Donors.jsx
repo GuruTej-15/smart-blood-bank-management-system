@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, Sparkles, IdCard } from "lucide-react";
+import { Plus, Search, Sparkles, IdCard, HeartHandshake } from "lucide-react";
 import api from "../api/axios";
 import Card from "../components/Card";
 import Modal from "../components/Modal";
@@ -84,11 +84,82 @@ function AddDonorForm({ onCreated, onCancel }) {
   );
 }
 
+function RecordDonationForm({ initialDonorId = "", onCreated, onCancel }) {
+  const [donors, setDonors] = useState([]);
+  const [form, setForm] = useState({ donorId: initialDonorId, unitsDonated: 1, date: new Date().toISOString().slice(0, 10) });
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    api.get("/donors").then(({ data }) => {
+      setDonors(data.donors);
+      if (!initialDonorId && data.donors[0]) {
+        setForm((f) => ({ ...f, donorId: data.donors[0]._id }));
+      }
+    });
+  }, [initialDonorId]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+    try {
+      const { data } = await api.post("/donations", form);
+      onCreated(data);
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to record donation");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && <p className="rounded-lg bg-pulse-light px-3 py-2 text-sm text-pulse">{error}</p>}
+      <Field label="Donor">
+        <Select required value={form.donorId} onChange={(e) => setForm({ ...form, donorId: e.target.value })}>
+          {donors.map((d) => (
+            <option key={d._id} value={d._id}>
+              {d.name} · {d.bloodGroup}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <div className="grid grid-cols-2 gap-4">
+        <Field label="Units donated">
+          <TextInput
+            type="number"
+            min={1}
+            value={form.unitsDonated}
+            onChange={(e) => setForm({ ...form, unitsDonated: Number(e.target.value) })}
+          />
+        </Field>
+        <Field label="Date">
+          <TextInput type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
+        </Field>
+      </div>
+      <p className="text-xs text-muted">
+        If the donor isn't yet eligible (90-day rule), this will be blocked unless overridden by an admin.
+      </p>
+      <div className="flex justify-end gap-3 pt-2">
+        <button type="button" onClick={onCancel} className="text-sm font-medium text-muted hover:text-ink">
+          Cancel
+        </button>
+        <PrimaryButton type="submit" disabled={submitting}>
+          {submitting ? "Recording…" : "Record Donation"}
+        </PrimaryButton>
+      </div>
+    </form>
+  );
+}
+
 export default function Donors() {
   const [donors, setDonors] = useState(null);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
   const [viewDonorId, setViewDonorId] = useState(null);
+  const [recordOpen, setRecordOpen] = useState(false);
+  const [recordDonorId, setRecordDonorId] = useState("");
 
   const [finderGroup, setFinderGroup] = useState("O-");
   const [finderResults, setFinderResults] = useState(null);
@@ -165,12 +236,23 @@ export default function Donors() {
                     <td className="py-2.5 pr-4 text-muted">{formatDate(d.lastDonationDate)}</td>
                     <td className="py-2.5 pr-4 text-muted">{d.totalDonations}</td>
                     <td className="py-2.5 pr-4 text-right">
-                      <button
-                        onClick={() => setViewDonorId(d._id)}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-crimson hover:underline"
-                      >
-                        <IdCard size={14} /> View card
-                      </button>
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setRecordDonorId(d._id);
+                            setRecordOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-full border border-stone/50 bg-paper px-2 py-1 text-xs font-medium text-ink transition hover:bg-stone/10"
+                        >
+                          <HeartHandshake size={14} /> Record donation
+                        </button>
+                        <button
+                          onClick={() => setViewDonorId(d._id)}
+                          className="inline-flex items-center gap-1 rounded-full border border-stone/50 bg-paper px-2 py-1 text-xs font-medium text-crimson transition hover:bg-crimson/10"
+                        >
+                          <IdCard size={14} /> View card
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -234,6 +316,21 @@ export default function Donors() {
             loadDonors();
           }}
           onCancel={() => setAddOpen(false)}
+        />
+      </Modal>
+
+      <Modal open={!!recordOpen} onClose={() => setRecordOpen(false)} title="Record Donation">
+        <RecordDonationForm
+          initialDonorId={recordDonorId}
+          onCreated={() => {
+            setRecordOpen(false);
+            setRecordDonorId("");
+            loadDonors();
+          }}
+          onCancel={() => {
+            setRecordOpen(false);
+            setRecordDonorId("");
+          }}
         />
       </Modal>
 

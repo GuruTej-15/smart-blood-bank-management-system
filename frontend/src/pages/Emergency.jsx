@@ -87,7 +87,7 @@ export default function Emergency() {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-ink">
                     {r.unitsRequired} unit(s) · {r.patientName || "Unnamed patient"}
-                    <span className="ml-3 text-xs text-muted">{hospitalsMap[r.hospital] || r.hospital || "—"}</span>
+                    <span className="ml-3 text-xs text-muted">{r.hospitalName || hospitalsMap[r.hospital] || r.hospital || "—"}</span>
                   </p>
                 </div>
               </li>

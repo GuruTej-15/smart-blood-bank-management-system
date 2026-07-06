@@ -21,8 +21,18 @@ async function createEmergencyRequest(req, res) {
 }
 
 /** Live, most-urgent-first view of the emergency Priority Queue */
+const Hospital = require("../models/Hospital");
+
 async function queueView(req, res) {
-  res.json({ size: store.emergencyQueue.size, queue: store.emergencyQueue.toSortedArray() });
+  const queueArr = store.emergencyQueue.toSortedArray();
+  const hospitalIds = Array.from(new Set(queueArr.map((q) => String(q.hospital)).filter(Boolean)));
+  let hospitals = [];
+  if (hospitalIds.length) {
+    hospitals = await Hospital.find({ _id: { $in: hospitalIds } }).lean();
+  }
+  const hospMap = hospitals.reduce((acc, h) => ({ ...acc, [String(h._id)]: h.hospitalName }), {});
+  const enriched = queueArr.map((q) => ({ ...q, hospitalName: hospMap[String(q.hospital)] || null }));
+  res.json({ size: store.emergencyQueue.size, queue: enriched });
 }
 
 /**

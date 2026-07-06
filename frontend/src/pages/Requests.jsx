@@ -22,12 +22,10 @@ function CreateRequestForm({ onCreated, onCancel, isHospitalUser }) {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (isHospitalUser) return;
     api.get("/hospitals").then(({ data }) => {
-      setHospitals(data.hospitals);
-      if (data.hospitals[0]) setForm((f) => ({ ...f, hospital: data.hospitals[0]._id }));
+      setHospitals(data.hospitals || []);
     });
-  }, [isHospitalUser]);
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -46,17 +44,16 @@ function CreateRequestForm({ onCreated, onCancel, isHospitalUser }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       {error && <p className="rounded-lg bg-pulse-light px-3 py-2 text-sm text-pulse">{error}</p>}
-      {!isHospitalUser && (
-        <Field label="Hospital">
-          <Select required value={form.hospital} onChange={(e) => setForm({ ...form, hospital: e.target.value })}>
-            {hospitals.map((h) => (
-              <option key={h._id} value={h._id}>
-                {h.hospitalName}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      )}
+      <Field label="Hospital">
+        <Select required value={form.hospital} onChange={(e) => setForm({ ...form, hospital: e.target.value })}>
+          <option value="">Select hospital</option>
+          {hospitals.map((h) => (
+            <option key={h._id} value={h._id}>
+              {h.hospitalName}
+            </option>
+          ))}
+        </Select>
+      </Field>
       <Field label="Patient name (optional)">
         <TextInput value={form.patientName} onChange={(e) => setForm({ ...form, patientName: e.target.value })} />
       </Field>

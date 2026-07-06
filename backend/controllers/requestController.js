@@ -4,8 +4,10 @@ const { consumeUnits } = require("../utils/fulfillment");
 
 async function createRequest(req, res) {
   const body = { ...req.body, isEmergency: false, priority: req.body.priority || "normal" };
-  if (req.user.role === "hospital" && req.user.hospital) {
-    body.hospital = req.user.hospital;
+  if (!body.hospital) {
+    if (req.user.role === "hospital" && req.user.hospital) {
+      body.hospital = req.user.hospital;
+    }
   }
   if (!body.hospital) {
     return res.status(400).json({ message: "hospital is required" });

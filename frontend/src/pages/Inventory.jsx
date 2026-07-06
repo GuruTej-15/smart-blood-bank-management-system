@@ -142,50 +142,53 @@ export default function Inventory() {
       <Card
         title="Inventory Batches"
         action={
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-            <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
-              <p className="font-medium">Total batches</p>
-              <p>{summary.totalBatches}</p>
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
+                <p className="font-medium">Total batches</p>
+                <p>{summary.totalBatches}</p>
+              </div>
+              <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
+                <p className="font-medium">Available units</p>
+                <p>{summary.totalAvailable}</p>
+              </div>
             </div>
-            <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
-              <p className="font-medium">Available units</p>
-              <p>{summary.totalAvailable}</p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
+                <span>Blood group</span>
+                <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="max-w-[140px]">
+                  <option value="">All groups</option>
+                  {BLOOD_GROUPS.map((g) => (
+                    <option key={g} value={g}>
+                      {g}
+                    </option>
+                  ))}
+                </Select>
+                <span>Status</span>
+                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[140px]">
+                  <option value="">All statuses</option>
+                  <option value="available">Available</option>
+                  <option value="used">Used</option>
+                  <option value="expired">Expired</option>
+                </Select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGroupFilter("");
+                    setStatusFilter("");
+                  }}
+                  className="rounded-lg border border-stone-dark bg-white px-3 py-2 text-sm font-semibold text-ink transition-colors hover:bg-paper"
+                >
+                  Reset
+                </button>
+              </div>
+              <PrimaryButton onClick={() => setAddOpen(true)}>
+                <Plus size={16} /> Add Batch
+              </PrimaryButton>
             </div>
-            <PrimaryButton onClick={() => setAddOpen(true)}>
-              <Plus size={16} /> Add Batch
-            </PrimaryButton>
           </div>
         }
       >
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
-            <span>Filter by</span>
-            <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="max-w-[160px]">
-              <option value="">All blood groups</option>
-              {BLOOD_GROUPS.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </Select>
-            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[160px]">
-              <option value="">All status</option>
-              <option value="available">Available</option>
-              <option value="used">Used</option>
-              <option value="expired">Expired</option>
-            </Select>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setGroupFilter("");
-              setStatusFilter("");
-            }}
-            className="rounded-lg border border-stone-dark bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-paper"
-          >
-            Reset filters
-          </button>
-        </div>
 
         {!batches ? (
           <Spinner />

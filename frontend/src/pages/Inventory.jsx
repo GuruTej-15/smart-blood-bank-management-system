@@ -173,7 +173,6 @@ export default function Inventory() {
               <option value="available">Available</option>
               <option value="used">Used</option>
               <option value="expired">Expired</option>
-              <option value="reserved">Reserved</option>
             </Select>
           </div>
           <button

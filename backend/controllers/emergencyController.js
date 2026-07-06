@@ -56,10 +56,18 @@ async function processNext(req, res) {
   );
   request.status = shortfall === 0 ? "fulfilled" : "approved";
   request.decidedAt = new Date();
-  request.fulfilledUnits = consumedBatches.map((b) => b.batchId);
+  request.fulfilledUnitsCount = (request.fulfilledUnitsCount || 0) + fulfilledUnits;
+  request.fulfilledUnits = [
+    ...((request.fulfilledUnits && Array.isArray(request.fulfilledUnits)) ? request.fulfilledUnits : []),
+    ...consumedBatches.map((b) => b.batchId),
+  ];
   await request.save();
 
+  // remove from in-memory queue and sync state
   store.emergencyQueue.dequeue();
+  if (request.status !== "pending") {
+    syncRequestRemove(request._id);
+  }
 
   let broadcast = null;
   if (shortfall > 0) {

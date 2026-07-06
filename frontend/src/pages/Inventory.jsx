@@ -101,10 +101,15 @@ export default function Inventory() {
   const [expiring, setExpiring] = useState(null);
   const [summary, setSummary] = useState({ totalBatches: 0, totalAvailable: 0 });
   const [addOpen, setAddOpen] = useState(false);
-  const [filter, setFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
 
   function load() {
-    api.get("/inventory", { params: filter ? { bloodGroup: filter } : {} }).then(({ data }) => {
+    const params = {};
+    if (groupFilter) params.bloodGroup = groupFilter;
+    if (statusFilter) params.status = statusFilter;
+
+    api.get("/inventory", { params }).then(({ data }) => {
       setBatches(data.batches);
       const totalAvailable = data.batches
         .filter((batch) => batch.status === "available")
@@ -153,15 +158,34 @@ export default function Inventory() {
         }
       >
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-sm text-muted">Filter by blood group</div>
-          <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-[160px]">
-            <option value="">All blood groups</option>
-            {BLOOD_GROUPS.map((g) => (
-              <option key={g} value={g}>
-                {g}
-              </option>
-            ))}
-          </Select>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+            <span>Filter by</span>
+            <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="max-w-[160px]">
+              <option value="">All blood groups</option>
+              {BLOOD_GROUPS.map((g) => (
+                <option key={g} value={g}>
+                  {g}
+                </option>
+              ))}
+            </Select>
+            <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[160px]">
+              <option value="">All statuses</option>
+              <option value="available">Available</option>
+              <option value="used">Used</option>
+              <option value="expired">Expired</option>
+              <option value="reserved">Reserved</option>
+            </Select>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setGroupFilter("");
+              setStatusFilter("");
+            }}
+            className="rounded-lg border border-stone-dark bg-white px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-paper"
+          >
+            Reset filters
+          </button>
         </div>
 
         {!batches ? (

@@ -173,7 +173,7 @@ export default function Requests() {
                   <p className="text-sm font-medium text-ink">
                     {r.unitsRequired} unit(s) · {r.hospital?.hospitalName || "Unknown hospital"}
                   </p>
-                  <p className="text-xs text-muted">{r.patientName || "—"}</p>
+                  <p className="text-xs text-muted">Patient: {r.patientName || "—"}</p>
                 </div>
                 {isAdmin && (
                   <>
@@ -207,6 +207,7 @@ export default function Requests() {
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-stone text-xs uppercase tracking-wide text-muted">
+                  <th className="py-2 pr-4">Patient</th>
                   <th className="py-2 pr-4">Hospital</th>
                   <th className="py-2 pr-4">Blood Group</th>
                   <th className="py-2 pr-4">Units</th>
@@ -219,6 +220,7 @@ export default function Requests() {
               <tbody>
                 {requests.map((r) => (
                   <tr key={r._id} className="border-b border-stone/60 hover:bg-paper">
+                    <td className="py-2.5 pr-4 text-ink">{r.patientName || "—"}</td>
                     <td className="py-2.5 pr-4 text-ink">{r.hospital?.hospitalName || "—"}</td>
                     <td className="py-2.5 pr-4">
                       <Badge className="border-crimson/30 bg-crimson-light text-crimson">{r.bloodGroup}</Badge>

@@ -119,7 +119,7 @@ export default function Inventory() {
     api.get("/inventory/expiring", { params: { days: 7 } }).then(({ data }) => setExpiring(data.units));
   }
 
-  useEffect(load, [filter]);
+  useEffect(load, [groupFilter, statusFilter]);
 
   return (
     <div className="space-y-6">

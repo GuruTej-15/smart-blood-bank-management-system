@@ -19,7 +19,6 @@ export default function EmergencyRequestForm({ onCreated, onCancel }) {
   useEffect(() => {
     api.get("/hospitals").then(({ data }) => {
       setHospitals(data.hospitals);
-      if (data.hospitals[0]) setForm((f) => ({ ...f, hospital: data.hospitals[0]._id }));
     });
   }, []);
 
@@ -46,6 +45,7 @@ export default function EmergencyRequestForm({ onCreated, onCancel }) {
           value={form.hospital}
           onChange={(e) => setForm({ ...form, hospital: e.target.value })}
         >
+          <option value="">— Select hospital —</option>
           {hospitals.map((h) => (
             <option key={h._id} value={h._id}>
               {h.hospitalName}

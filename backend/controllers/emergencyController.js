@@ -9,7 +9,7 @@ async function createEmergencyRequest(req, res) {
     isEmergency: true,
     priority: ["critical", "high"].includes(req.body.priority) ? req.body.priority : "critical",
   };
-  if (req.user.role === "hospital" && req.user.hospital) {
+  if (req.user.role === "hospital" && req.user.hospital && !req.body.hospital) {
     body.hospital = req.user.hospital;
   }
   if (!body.hospital) {

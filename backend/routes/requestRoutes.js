@@ -10,7 +10,7 @@ router.use(protect);
 router.get("/queue", allowRoles("admin"), ctrl.queueView);
 router.post("/process-next", allowRoles("admin"), ctrl.processNext);
 
-router.post("/", allowRoles("admin", "hospital"), ctrl.createRequest);
+router.post("/", allowRoles("hospital"), ctrl.createRequest);
 router.get("/", allowRoles("admin", "hospital"), ctrl.listRequests);
 router.get("/:id", allowRoles("admin", "hospital"), ctrl.getRequest);
 router.post("/:id/approve", allowRoles("admin"), ctrl.approveAndFulfill);

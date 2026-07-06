@@ -147,9 +147,11 @@ export default function Requests() {
                 <PlayCircle size={16} /> Process Next
               </SecondaryButton>
             )}
-            <PrimaryButton onClick={() => setCreateOpen(true)}>
-              <Plus size={16} /> New Request
-            </PrimaryButton>
+            {isHospital && (
+              <PrimaryButton onClick={() => setCreateOpen(true)}>
+                <Plus size={16} /> New Request
+              </PrimaryButton>
+            )}
           </div>
         }
       >

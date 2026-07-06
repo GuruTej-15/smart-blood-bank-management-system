@@ -104,13 +104,30 @@ export default function Inventory() {
   const [groupFilter, setGroupFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
 
+  function groupBatches(batchList) {
+    const grouped = new Map();
+    batchList.forEach((batch) => {
+      const key = `${batch.bloodGroup}|${batch.collectedDate}|${batch.expiryDate}|${batch.status}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, {
+          ...batch,
+          units: batch.units || 0,
+        });
+      } else {
+        const existing = grouped.get(key);
+        existing.units += batch.units || 0;
+      }
+    });
+    return Array.from(grouped.values());
+  }
+
   function load() {
     const params = {};
     if (groupFilter) params.bloodGroup = groupFilter;
     if (statusFilter) params.status = statusFilter;
 
     api.get("/inventory", { params }).then(({ data }) => {
-      setBatches(data.batches);
+      setBatches(groupBatches(data.batches));
       const totalAvailable = data.batches
         .filter((batch) => batch.status === "available")
         .reduce((sum, batch) => sum + (batch.units || 0), 0);

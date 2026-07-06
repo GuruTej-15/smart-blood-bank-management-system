@@ -57,7 +57,11 @@ export default function Topbar({ onOpenSidebar }) {
 
       {showEmergencyAction ? (
         <Modal open={open} onClose={() => setOpen(false)} title="Submit Emergency Request">
-          <EmergencyRequestForm onCreated={() => setOpen(false)} onCancel={() => setOpen(false)} />
+          <EmergencyRequestForm
+            initialHospitalId={user?.hospital}
+            onCreated={() => setOpen(false)}
+            onCancel={() => setOpen(false)}
+          />
         </Modal>
       ) : null}
     </>

@@ -3,7 +3,7 @@ import api from "../api/axios";
 import { BLOOD_GROUPS } from "../utils/constants";
 import { Field, TextInput, Select, PrimaryButton } from "./Form";
 
-export default function EmergencyRequestForm({ onCreated, onCancel }) {
+export default function EmergencyRequestForm({ onCreated, onCancel, initialHospitalId = "" }) {
   const [hospitals, setHospitals] = useState([]);
   const [form, setForm] = useState({
     hospital: "",
@@ -21,6 +21,10 @@ export default function EmergencyRequestForm({ onCreated, onCancel }) {
       setHospitals(data.hospitals);
     });
   }, []);
+
+  useEffect(() => {
+    if (initialHospitalId) setForm((f) => ({ ...f, hospital: initialHospitalId }));
+  }, [initialHospitalId]);
 
   async function handleSubmit(e) {
     e.preventDefault();

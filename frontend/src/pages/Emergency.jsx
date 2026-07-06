@@ -14,12 +14,21 @@ export default function Emergency() {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   const [queue, setQueue] = useState(null);
+  const [hospitalsMap, setHospitalsMap] = useState({});
   const [createOpen, setCreateOpen] = useState(false);
   const [result, setResult] = useState(null);
 
   function load() {
     api.get("/emergency/queue").then(({ data }) => setQueue(data.queue));
   }
+
+  useEffect(() => {
+    api.get("/hospitals").then(({ data }) => {
+      const map = {};
+      data.hospitals.forEach((h) => (map[h._id] = h.hospitalName));
+      setHospitalsMap(map);
+    });
+  }, []);
 
   useEffect(load, []);
 
@@ -78,6 +87,7 @@ export default function Emergency() {
                 <div className="flex-1">
                   <p className="text-sm font-medium text-ink">
                     {r.unitsRequired} unit(s) · {r.patientName || "Unnamed patient"}
+                    <span className="ml-3 text-xs text-muted">{hospitalsMap[r.hospital] || r.hospital || "—"}</span>
                   </p>
                 </div>
               </li>

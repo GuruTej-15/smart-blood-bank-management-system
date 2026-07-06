@@ -35,9 +35,6 @@ export default function Emergency() {
             <SecondaryButton onClick={processNext}>
               <PlayCircle size={16} /> Process Most Urgent
             </SecondaryButton>
-            <PrimaryButton onClick={() => setCreateOpen(true)} className="!bg-pulse hover:!opacity-90">
-              <Plus size={16} /> New Emergency Request
-            </PrimaryButton>
           </div>
         }
       >

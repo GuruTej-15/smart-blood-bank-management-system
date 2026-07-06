@@ -3,7 +3,12 @@ const { store, syncRequestAdd, syncRequestRemove, getAvailableUnitCount } = requ
 const { consumeUnits } = require("../utils/fulfillment");
 
 async function createRequest(req, res) {
-  const body = { ...req.body, isEmergency: false, priority: req.body.priority || "normal" };
+  const body = {
+    ...req.body,
+    isEmergency: false,
+    priority: req.body.priority || "normal",
+    createdBy: req.user._id,
+  };
   if (!body.hospital) {
     if (req.user.role === "hospital" && req.user.hospital) {
       body.hospital = req.user.hospital;
@@ -21,10 +26,15 @@ async function listRequests(req, res) {
   const { status } = req.query;
   const filter = {};
   if (status) filter.status = status;
-  if (req.user.role === "hospital" && req.user.hospital) {
-    filter.hospital = req.user.hospital;
+  if (req.user.role === "hospital") {
+    filter.$or = [
+      { hospital: req.user.hospital },
+      { createdBy: req.user._id },
+    ];
   }
-  const requests = await Request.find(filter).populate("hospital", "hospitalName").sort({ createdAt: -1 });
+  const requests = await Request.find(filter)
+    .populate("hospital", "hospitalName")
+    .sort({ createdAt: -1 });
   res.json({ count: requests.length, requests });
 }
 

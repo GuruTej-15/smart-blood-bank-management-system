@@ -11,6 +11,7 @@ const requestSchema = new mongoose.Schema(
     isEmergency: { type: Boolean, default: false }, // true -> routed to PriorityQueue instead of Queue
     status: { type: String, enum: REQUEST_STATUSES, default: "pending" },
     notes: { type: String, default: "" },
+    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     fulfilledUnits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Inventory" }],
     fulfilledUnitsCount: { type: Number, default: 0 },
     decidedAt: { type: Date },

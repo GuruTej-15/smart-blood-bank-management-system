@@ -27,7 +27,7 @@ export default function Topbar({ onOpenSidebar }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const title = TITLES[location.pathname] || "Smart Blood Bank";
-  const showEmergencyAction = user?.role !== "donor";
+  const showEmergencyAction = user?.role === "hospital";
 
   return (
     <>

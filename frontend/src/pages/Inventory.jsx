@@ -99,11 +99,18 @@ function AddBatchForm({ onCreated, onCancel }) {
 export default function Inventory() {
   const [batches, setBatches] = useState(null);
   const [expiring, setExpiring] = useState(null);
+  const [summary, setSummary] = useState({ totalBatches: 0, totalAvailable: 0 });
   const [addOpen, setAddOpen] = useState(false);
   const [filter, setFilter] = useState("");
 
   function load() {
-    api.get("/inventory", { params: filter ? { bloodGroup: filter } : {} }).then(({ data }) => setBatches(data.batches));
+    api.get("/inventory", { params: filter ? { bloodGroup: filter } : {} }).then(({ data }) => {
+      setBatches(data.batches);
+      const totalAvailable = data.batches
+        .filter((batch) => batch.status === "available")
+        .reduce((sum, batch) => sum + (batch.units || 0), 0);
+      setSummary({ totalBatches: data.batches.length, totalAvailable });
+    });
     api.get("/inventory/expiring", { params: { days: 7 } }).then(({ data }) => setExpiring(data.units));
   }
 
@@ -130,12 +137,23 @@ export default function Inventory() {
       <Card
         title="Inventory Batches"
         action={
-          <PrimaryButton onClick={() => setAddOpen(true)}>
-            <Plus size={16} /> Add Batch
-          </PrimaryButton>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
+              <p className="font-medium">Total batches</p>
+              <p>{summary.totalBatches}</p>
+            </div>
+            <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
+              <p className="font-medium">Available units</p>
+              <p>{summary.totalAvailable}</p>
+            </div>
+            <PrimaryButton onClick={() => setAddOpen(true)}>
+              <Plus size={16} /> Add Batch
+            </PrimaryButton>
+          </div>
         }
       >
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-muted">Filter by blood group</div>
           <Select value={filter} onChange={(e) => setFilter(e.target.value)} className="max-w-[160px]">
             <option value="">All blood groups</option>
             {BLOOD_GROUPS.map((g) => (
@@ -151,27 +169,27 @@ export default function Inventory() {
         ) : batches.length === 0 ? (
           <EmptyState label="No inventory batches found" />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
+          <div className="overflow-x-auto rounded-3xl border border-stone/10 bg-snow shadow-inner">
+            <table className="min-w-[700px] w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-stone text-xs uppercase tracking-wide text-muted">
-                  <th className="py-2 pr-4">Blood Group</th>
-                  <th className="py-2 pr-4">Units</th>
-                  <th className="py-2 pr-4">Collected</th>
-                  <th className="py-2 pr-4">Expires</th>
-                  <th className="py-2 pr-4">Status</th>
+                <tr className="bg-paper text-xs uppercase tracking-wide text-muted">
+                  <th className="py-3 pr-4 font-semibold">Blood Group</th>
+                  <th className="py-3 pr-4 font-semibold">Units</th>
+                  <th className="py-3 pr-4 font-semibold">Collected</th>
+                  <th className="py-3 pr-4 font-semibold">Expires</th>
+                  <th className="py-3 pr-4 font-semibold">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {batches.map((b) => (
-                  <tr key={b._id} className="border-b border-stone/60 hover:bg-paper">
-                    <td className="py-2.5 pr-4">
+                  <tr key={b._id} className="border-b border-stone/10 hover:bg-white">
+                    <td className="py-3 pr-4">
                       <Badge className="border-crimson/30 bg-crimson-light text-crimson">{b.bloodGroup}</Badge>
                     </td>
-                    <td className="py-2.5 pr-4 text-ink">{b.units}</td>
-                    <td className="py-2.5 pr-4 text-muted">{formatDate(b.collectedDate)}</td>
-                    <td className="py-2.5 pr-4 text-muted">{formatDate(b.expiryDate)}</td>
-                    <td className="py-2.5 pr-4">
+                    <td className="py-3 pr-4 text-ink">{b.units}</td>
+                    <td className="py-3 pr-4 text-muted">{formatDate(b.collectedDate)}</td>
+                    <td className="py-3 pr-4 text-muted">{formatDate(b.expiryDate)}</td>
+                    <td className="py-3 pr-4">
                       <Badge className={STATUS_BADGE[b.status]}>{b.status}</Badge>
                     </td>
                   </tr>

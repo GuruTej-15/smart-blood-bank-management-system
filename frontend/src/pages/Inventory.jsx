@@ -186,7 +186,7 @@ export default function Inventory() {
                 <div className="flex items-center gap-2">
                   <span className="font-medium text-ink">Status</span>
                   <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[140px]">
-                    <option value="">All statuses</option>
+                    <option value="">All status</option>
                     <option value="available">Available</option>
                     <option value="used">Used</option>
                     <option value="expired">Expired</option>

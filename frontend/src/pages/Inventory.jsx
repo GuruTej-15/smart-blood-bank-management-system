@@ -142,7 +142,7 @@ export default function Inventory() {
       <Card
         title="Inventory Batches"
         action={
-          <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="rounded-2xl border border-stone/70 bg-stone-light px-3 py-2 text-sm text-ink">
                 <p className="font-medium">Total batches</p>
@@ -153,24 +153,28 @@ export default function Inventory() {
                 <p>{summary.totalAvailable}</p>
               </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
-                <span>Blood group</span>
-                <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="max-w-[140px]">
-                  <option value="">All groups</option>
-                  {BLOOD_GROUPS.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </Select>
-                <span>Status</span>
-                <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[140px]">
-                  <option value="">All statuses</option>
-                  <option value="available">Available</option>
-                  <option value="used">Used</option>
-                  <option value="expired">Expired</option>
-                </Select>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-stone/70 bg-white px-3 py-2 text-sm text-muted shadow-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-ink">Blood group</span>
+                  <Select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)} className="max-w-[140px]">
+                    <option value="">All groups</option>
+                    {BLOOD_GROUPS.map((g) => (
+                      <option key={g} value={g}>
+                        {g}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium text-ink">Status</span>
+                  <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="max-w-[140px]">
+                    <option value="">All statuses</option>
+                    <option value="available">Available</option>
+                    <option value="used">Used</option>
+                    <option value="expired">Expired</option>
+                  </Select>
+                </div>
                 <button
                   type="button"
                   onClick={() => {

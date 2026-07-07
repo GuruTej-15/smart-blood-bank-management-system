@@ -231,21 +231,20 @@ export default function Requests() {
                     <td className="py-2.5 pr-4 text-muted">{r.isEmergency ? "Emergency" : "Normal"}</td>
                     <td className="py-2.5 pr-4 flex items-center gap-2">
                       <Badge className={STATUS_STYLES[r.status]}>{r.status}</Badge>
-                      {isAdmin && r.status === "approved" && (
-                        stockSnapshot[r.bloodGroup] > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => fulfillApproved(r._id)}
-                            className="rounded-lg bg-vital-light px-2 py-1 text-xs font-medium text-vital hover:bg-vital/10"
-                            title="Try to fulfill approved request"
-                          >
-                            Fulfill
-                          </button>
-                        ) : (
-                          <span className="rounded-lg bg-stone-light px-2 py-1 text-xs font-medium text-stone">
-                            Not available
-                          </span>
-                        )
+                      {r.status === "approved" && stockSnapshot[r.bloodGroup] <= 0 && (
+                        <span className="rounded-lg bg-stone-light px-2 py-1 text-xs font-medium text-stone">
+                          Not available
+                        </span>
+                      )}
+                      {isAdmin && r.status === "approved" && stockSnapshot[r.bloodGroup] > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => fulfillApproved(r._id)}
+                          className="rounded-lg bg-vital-light px-2 py-1 text-xs font-medium text-vital hover:bg-vital/10"
+                          title="Try to fulfill approved request"
+                        >
+                          Fulfill
+                        </button>
                       )}
                     </td>
                     <td className="py-2.5 pr-4 text-muted">{formatDate(r.createdAt)}</td>

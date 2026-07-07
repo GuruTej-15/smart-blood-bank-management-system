@@ -1,78 +1,66 @@
-# Frontend Documentation
+# Frontend — Smart Blood Bank
 
-This folder contains the React and Vite client for the Smart Blood Bank application. It provides the user interface for donor management, inventory handling, emergency workflows, analytics, and more.
+This folder contains the React + Vite single-page application used by Smart Blood Bank. It implements the UI for donors, inventory, requests, emergency flows, and analytics.
 
-## Overview
+## Tech summary
 
-The frontend is a single-page application built with:
-
-- React 19
-- Vite
-- React Router
-- Tailwind CSS
-- Recharts for charts and metrics
-- Axios for API communication
-
-## Main areas of the app
-
-The user interface includes screens for:
-
-- authentication and protected routes
-- donor records and donor detail views
-- inventory and blood stock management
-- blood request and emergency request flows
-- analytics, crisis prediction, and broadcast views
-- admin and role-based landing pages
+- React 19, Vite, React Router
+- Styling: Tailwind CSS
+- Charts: Recharts
+- API: Axios
 
 ## Project structure
 
 ```text
 frontend/
-├── public/           # Static assets and service worker
+├── public/        # Static assets, manifest, service worker
 ├── src/
-│   ├── api/          # API connection setup
-│   ├── components/   # Reusable UI components
-│   ├── context/      # Auth context and shared state
-│   ├── pages/        # Route-level screens
-│   ├── utils/        # Helper utilities and constants
-│   ├── App.jsx       # Main app shell
-│   └── main.jsx      # Application entry point
-└── package.json      # Scripts and dependencies
+│   ├── api/       # Axios instance and API helpers
+│   ├── components/# Reusable UI components
+│   ├── context/   # Auth/context providers
+│   ├── pages/     # Route-level screens
+│   ├── utils/     # Helpers and constants
+│   ├── App.jsx    # Main app shell
+│   └── main.jsx   # Application entry point
+└── package.json
 ```
 
-## Setup
+## Local setup
+
+1. Create `.env` and install dependencies:
 
 ```bash
 cd frontend
 cp .env.example .env
 npm install
+```
+
+2. Start dev server:
+
+```bash
 npm run dev
 ```
 
-The default API base URL is set in [.env.example](.env.example) and points to http://localhost:5000/api.
-
-## Available scripts
-
-```bash
-npm run dev      # start the development server
-npm run build    # create a production build
-npm run lint     # run ESLint checks
-npm run preview  # preview the production build locally
-```
+Default dev URL: `http://localhost:5173`
 
 ## Environment variables
 
-The frontend depends on:
+- `VITE_API_URL` — backend API origin (example: `http://localhost:5000/api`)
 
-- VITE_API_URL: the backend API origin used by Axios
+When deploying to Vercel set `VITE_API_URL` in the project environment variables to point to your deployed backend origin.
 
-For local development, the app uses `frontend/.env` and defaults to `http://localhost:5000/api` if the variable is missing.
+## Scripts
 
-When deploying to Vercel, set `VITE_API_URL` in the Vercel project settings to your Render backend origin.
+- `npm run dev` — run development server
+- `npm run build` — create production build
+- `npm run preview` — preview production build locally
+- `npm run lint` — run ESLint
 
-## Notes
+## Notes for developers
 
-- Authentication tokens are stored in local storage and attached automatically to API requests.
-- The app uses protected routes and role-based access checks in the UI.
-- The PWA service worker and install prompt are available in the public assets folder.
+- Auth tokens are stored in `localStorage` and automatically attached to API requests by the Axios instance in `src/api/axios.js`.
+- Protected routes and role checks are implemented using `ProtectedRoute` and `RoleRoute` components in `src/components`.
+- The app includes a PWA service worker (`public/sw.js`) and an install prompt component.
+
+If you want, I can add a short developer guide that documents component structure and how to add new pages or routes.
 

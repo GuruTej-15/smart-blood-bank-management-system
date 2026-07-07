@@ -1,54 +1,46 @@
 # Smart Blood Bank
 
-Smart Blood Bank is a full-stack web application for managing donors, blood inventory, emergency requests, and hospital coordination. It combines a Node.js and Express backend with a React and Vite frontend to support real-world blood bank workflows in a single dashboard.
+Smart Blood Bank is a full-stack web application for managing donors, blood inventory, hospital requests, and emergency workflows. It pairs a Node.js + Express REST API with a React + Vite frontend and includes utilities for analytics, broadcasts, and priority-based request handling.
 
-## What this project does
+## Project overview
 
-The platform is designed to help a blood bank or emergency response team:
+- Purpose: provide an end-to-end tool for blood bank operations, including donor management, inventory tracking, emergency fulfillment, and analytics.
+- Audience: developers, hospital administrators, and volunteer coordinators who want a self-hosted blood-management dashboard or a reference implementation.
 
-- manage donor records and donation history
-- track blood inventory by blood group and expiry date
-- process normal and emergency blood requests
-- support hospital and donation workflows
-- surface analytics, crisis insights, and inventory alerts
-- provide a simulated broadcast system for emergency communication
+## Key features
 
-## Main features
-
-- Donor management and smart donor lookup
-- Blood inventory tracking and low-stock alerts
-- Emergency request handling with priority-based processing
+- Donor management and donation history
+- Inventory tracking with expiry and low-stock alerts
+- Normal and emergency blood request processing with prioritization
 - Compatibility and eligibility checks
-- Analytics dashboard and crisis prediction views
-- Security features such as JWT authentication, rate limiting, and invite-based admin onboarding
-- Custom data structures implemented in the backend for core operations
+- Analytics and crisis-simulation dashboards
+- Broadcast messaging pipeline for emergency notifications
+- JWT-based authentication, role-based access, and admin invite bootstrap
 
 ## Tech stack
 
 - Frontend: React, Vite, React Router, Tailwind CSS, Recharts, Axios
-- Backend: Node.js, Express, MongoDB with Mongoose
-- Authentication: JWT and bcrypt-based security flows
-- Other libraries: qrcode, helmet, express-rate-limit, and more
+- Backend: Node.js, Express, MongoDB (Mongoose)
+- Auth & Security: JWT, bcrypt, helmet, express-rate-limit
 
-## Project structure
+## Repository layout
 
 ```text
 bloodbank/
-├── backend/           # Express API and business logic
-├── frontend/          # React/Vite client application
-├── README.md          # Main documentation
-└── vercel.json        # Deployment config
+├── backend/        # Express API, controllers, models, scripts
+├── frontend/       # React client (Vite)
+├── README.md       # This file (overview + quick start)
+└── vercel.json     # Frontend deployment config
 ```
 
 ## Quick start
 
-### 1. Prerequisites
+Prerequisites:
 
-- Node.js 18 or newer
-- npm
-- MongoDB running locally or a MongoDB Atlas connection string
+- Node.js 18+ and npm
+- MongoDB local instance or MongoDB Atlas connection string
 
-### 2. Backend setup
+1) Start the backend
 
 ```bash
 cd backend
@@ -57,9 +49,9 @@ npm install
 npm run dev
 ```
 
-The API will run on http://localhost:5000 by default.
+Default API URL: http://localhost:5000 (routes served under `/api`)
 
-### 3. Frontend setup
+2) Start the frontend
 
 ```bash
 cd frontend
@@ -68,79 +60,78 @@ npm install
 npm run dev
 ```
 
-The frontend will run on http://localhost:5173 by default.
+Frontend default: http://localhost:5173
 
-### 4. Optional demo data
+3) (Optional) Seed demo data
 
 ```bash
 cd backend
 npm run seed
 ```
 
-To remove demo or seed data that was previously inserted:
+Remove seeded data:
 
 ```bash
 cd backend
 npm run purge:seed
 ```
-## Deployment
 
-This project is configured for a split deployment:
+## Environment variables
 
-- Backend: deploy to Render as a Node/Express service.
-- Frontend: deploy to Vercel as a static Vite app.
+See [backend/.env.example](backend/.env.example) and [frontend/.env.example](frontend/.env.example).
 
-For local development, keep `frontend/.env` set to `VITE_API_URL=http://localhost:5000/api`.
+Important keys:
 
-When deploying on Vercel, set the frontend environment variable `VITE_API_URL` to your Render backend origin, for example:
+- `MONGO_URI` — MongoDB connection string
+- `JWT_SECRET` — secret used to sign auth tokens
+- `CORS_ORIGIN` — allowed origins for requests
+- `VITE_API_URL` — frontend setting pointing to backend API origin
+- `ADMIN_BOOTSTRAP_CODE` — initial admin invite code (backend)
 
-```text
-https://<your-render-service>.onrender.com
-```
+## Development scripts
 
-If you provide the backend origin without `/api`, the frontend will automatically append `/api` at runtime.
+Backend (run from `backend/`):
 
-On Render, configure the backend environment variables including `MONGO_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `FRONTEND_URL`.
-`CORS_ORIGIN` should include your Vercel app URL, for example `https://<your-vercel-app>.vercel.app`.
-## Environment configuration
+- `npm run dev` — start server with nodemon
+- `npm start` — production start
+- `npm run seed` — insert demo data
+- `npm run purge:seed` — remove demo data
+- `npm run test:ds` — run data-structure tests
 
-Key backend environment variables are defined in [backend/.env.example](backend/.env.example), and the frontend uses [frontend/.env.example](frontend/.env.example).
+Frontend (run from `frontend/`):
 
-Important settings include:
+- `npm run dev` — start Vite dev server
+- `npm run build` — build production bundle
+- `npm run lint` — run ESLint
+- `npm run preview` — preview production build
 
-- MONGO_URI for the MongoDB connection
-- JWT_SECRET for signing authentication tokens
-- CORS_ORIGIN for allowed frontend origins
-- ADMIN_BOOTSTRAP_CODE for first-admin setup
+## API documentation
 
-## Development commands
+High-level API groups (all under `/api`):
 
-### Backend
+- `auth` — login, register, Google auth, invite-based admin flow
+- `donors` — CRUD donor records and donor QR generation
+- `inventory` — blood stock, grouping, expiry management
+- `requests` — create and manage normal requests
+- `emergency` — create and process emergency requests
+- `analytics` — simulated analytics and crisis endpoints
 
-```bash
-cd backend
-npm start
-npm run dev
-npm run test:ds
-npm run generate-secret
-```
+For endpoint details see the route files in [backend/routes](backend/routes).
 
-### Frontend
+## Deployment notes
 
-```bash
-cd frontend
-npm run dev
-npm run build
-npm run lint
-npm run preview
-```
+- Frontend: optimized for Vercel (see `vercel.json`). Set `VITE_API_URL` to the backend origin in Vercel environment variables.
+- Backend: suitable for Render or any Node-hosting provider. Ensure `MONGO_URI`, `JWT_SECRET`, `CORS_ORIGIN`, and `FRONTEND_URL` are set.
 
-## Documentation
+## Contributing
 
-- Backend guide: [backend/README.md](backend/README.md)
-- Frontend guide: [frontend/README.md](frontend/README.md)
+- Fork the repo and open a pull request with clear change descriptions.
+- Add tests for backend logic where applicable (especially for data structures and request processing).
 
-## Notes
+## Where to look next
 
-This project includes a custom in-memory data structure layer in the backend to support fast lookup and workflow logic while still keeping MongoDB as the source of truth. The analytics and crisis pages are intentionally presented as simulation-based views rather than production-grade ML predictions.
+- Backend docs: [backend/README.md](backend/README.md)
+- Frontend docs: [frontend/README.md](frontend/README.md)
+
+If you'd like, I can also generate a short API reference extracted from the route files.
 

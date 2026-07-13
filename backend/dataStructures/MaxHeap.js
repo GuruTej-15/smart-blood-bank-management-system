@@ -26,7 +26,7 @@ class MaxHeap {
   extractTop() {
     return this.heap.extract();
   }
-
+ 
   /** Top N donors, highest first - does not mutate the heap */
   topN(n) {
     return this.heap.toSortedArray().slice(0, n);

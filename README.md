@@ -11,7 +11,7 @@ Smart Blood Bank is a full-stack web application for managing donors, blood inve
 
 - Donor management and donation history
 - Inventory tracking with expiry and low-stock alerts
-- Normal and emergency blood request processing with prioritization
+- Normal and emergency blood request processing with prioritization 
 - Compatibility and eligibility checks
 - Analytics and crisis-simulation dashboards
 - Broadcast messaging pipeline for emergency notifications
